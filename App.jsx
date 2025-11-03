@@ -62,12 +62,11 @@ function App() {
   const [checkInMode, setCheckInMode] = useState('scan'); 
   
   // --- Refs សម្រាប់ Stale State ---
+  // !! កែសម្រួល !!: មិនប្រើ Refs សម្រាប់ State ទៀតទេ
   const t = translations[language] || translations['km'];
-  const tRef = React.useRef(t); 
-  const attendanceRef = React.useRef(attendance); 
 
   // --- មុខងារ TTS ---
-  const speak = React.useCallback((text) => {
+  const speak = (text) => {
     try {
       if (!window.speechSynthesis) {
         console.warn("Browser does not support Speech Synthesis.");
@@ -81,7 +80,7 @@ function App() {
     } catch (e) {
       console.error("Speech Synthesis Error:", e);
     }
-  }, []);
+  };
 
   // --- Effects ---
   useEffect(() => {
@@ -93,16 +92,13 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('break_lang', language);
-    tRef.current = translations[language] || translations['km']; 
-  }, [language, translations]);
+  }, [language]);
 
   useEffect(() => {
     localStorage.setItem('break_bg', background);
   }, [background]);
-
-  useEffect(() => {
-    attendanceRef.current = attendance;
-  }, [attendance]);
+  
+  // !! លុប !!: លុប useEffect សម្រាប់ attendanceRef
 
 
   // ជំហានទី 1: ដំណើរការ Firebase ទាំងពីរ
@@ -262,21 +258,15 @@ function App() {
       })
       .filter(Boolean) 
       .sort((a, b) => {
-        // !! កែសម្រួល !!: Logic Sort ថ្មី
-        // 1. Overtime តែងតែនៅខាងលើ
         if (a.isOvertime !== b.isOvertime) {
           return a.isOvertime ? -1 : 1; 
         }
-        
-        // 2. បើទាំងពីរ Overtime, យកអ្នក Overtime យូរជាងគេមកលើ
         if (a.isOvertime) { 
           return b.elapsedMins - a.elapsedMins;
         }
-        
-        // 3. បើទាំងពីរមិន Overtime, យកអ្នកទើបចេញ (នាទីតិច) មកលើ
         return a.elapsedMins - b.elapsedMins; 
       });
-  }, [students, attendance, now, calculateDuration]); // !! កែសម្រួល !!
+  }, [students, attendance, now, calculateDuration]);
 
   const allCompletedBreaks = React.useMemo(() => {
     const breaks = [];
@@ -329,19 +319,19 @@ function App() {
 
 
   // --- Helper function សម្រាប់ហៅ Alert ---
-  const showAlert = React.useCallback((message, type = 'info') => {
+  const showAlert = (message, type = 'info') => {
     setInfoAlert({ isOpen: true, message, type });
-  }, []);
+  };
   
   // --- មុខងារសម្រាប់កត់ត្រា (ប្រើ dbWrite) ---
   
-  const handleCheckOut = React.useCallback(async (studentId) => {
+  const handleCheckOut = async (studentId) => {
     const student = students.find(s => s.id === studentId);
     if (!student || !dbWrite) return;
         
     if (studentsOnBreakCount >= totalPasses) {
-      setAuthError(`${tRef.current.statusPassOut} (${studentsOnBreakCount}/${totalPasses})`);
-      speak(tRef.current.statusPassOut);
+      setAuthError(`${t.statusPassOut} (${studentsOnBreakCount}/${totalPasses})`);
+      speak(t.statusPassOut);
       return; 
     }
     
@@ -362,12 +352,12 @@ function App() {
     }
 
     const now = new Date();
-    const studentBreaks = attendanceRef.current[student.id] || [];
+    const studentBreaks = attendance[student.id] || [];
     const completedBreaks = studentBreaks.filter(r => r.checkInTime && r.checkOutTime);
     const breakCount = completedBreaks.length;
     let breakType = (breakCount >= 2) ? "special" : "normal";
     
-    speak(`${student.name || tRef.current.noName} ${tRef.current.statusOnBreak} ${tRef.current.statusPass} ${nextPassNumber}`);
+    speak(`${student.name || t.noName} ${t.statusOnBreak} ${t.statusPass} ${nextPassNumber}`);
     
     const attendanceRefDb = ref(dbWrite, 'attendance');
     const newRecordRef = push(attendanceRefDb);
@@ -389,16 +379,16 @@ function App() {
       console.error('Check-out Error (dbWrite):', error);
       setAuthError(`Check-out Error: ${error.message}`);
     }
-  }, [dbWrite, students, studentsOnBreakCount, totalPasses, sortedStudentsOnBreak, speak, ref, push, set, appSetup.todayString]);
+  };
   
-  const handleCheckIn = React.useCallback(async (studentId) => {
+  const handleCheckIn = async (studentId) => {
     const student = students.find(s => s.id === studentId);
     if (!student || !dbWrite) {
       console.error("Check-in Error: Student or DB not found.");
       return;
     }
     
-    const studentBreaks = attendanceRef.current[student.id] || [];
+    const studentBreaks = attendance[student.id] || [];
     const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
     
     if (!activeBreak) {
@@ -406,7 +396,7 @@ function App() {
        return;
     }
     
-    speak(`${student.name || tRef.current.noName} ${tRef.current.checkIn}`);
+    speak(`${student.name || t.noName} ${t.checkIn}`);
         
     const now = new Date();
     const docId = activeBreak.id; 
@@ -428,25 +418,25 @@ function App() {
       setIsScannerBusy(false); 
       setScannerTriggeredCheckIn(null);
     }
-  }, [dbWrite, students, speak, ref, update]);
+  };
   
   // --- មុខងារលុប និង Password ---
   
-  const handleOpenPasswordModal = React.useCallback((message, onConfirmCallback) => {
+  const handleOpenPasswordModal = (message, onConfirmCallback) => {
     setPasswordPrompt({
       isOpen: true,
       message: message,
       onConfirm: onConfirmCallback,
       error: null
     });
-  }, []);
+  };
   
-  const handleOpenDeleteModal_Simple = React.useCallback((e, student, record) => {
+  const handleOpenDeleteModal_Simple = (e, student, record) => {
     e.stopPropagation();
     setRecordToDelete({ student, record });
-  }, []);
+  };
   
-  const handlePasswordSubmit = React.useCallback((password) => {
+  const handlePasswordSubmit = (password) => {
     if (!adminPassword) { 
         setPasswordPrompt(prev => ({ ...prev, error: "សូមរង់ចាំ... Password កំពុង Load" }));
         return;
@@ -455,11 +445,11 @@ function App() {
       passwordPrompt.onConfirm();
       setPasswordPrompt({ isOpen: false });
     } else {
-      setPasswordPrompt(prev => ({ ...prev, error: tRef.current.passwordError }));
+      setPasswordPrompt(prev => ({ ...prev, error: t.passwordError }));
     }
-  }, [adminPassword, passwordPrompt]);
+  };
   
-  const handleConfirmDelete_Single = React.useCallback(async (recordId) => {
+  const handleConfirmDelete_Single = async (recordId) => {
     if (!dbWrite) return;
     const docRef = ref(dbWrite, `attendance/${recordId}`);
     try {
@@ -469,31 +459,31 @@ function App() {
       console.error('Delete Error (dbWrite):', error);
       setAuthError(`Delete Error: ${error.message}`);
     }
-  }, [dbWrite, ref, remove]);
+  };
   
-  const handleToggleSelectionMode = React.useCallback(() => {
+  const handleToggleSelectionMode = () => {
     setIsSelectionMode(prev => !prev);
     setSelectedRecords([]);
     setShowAdminModal(false);
-  }, []);
+  };
   
-  const handleRecordSelect = React.useCallback((recordId) => {
+  const handleRecordSelect = (recordId) => {
     setSelectedRecords(prev => 
       prev.includes(recordId) 
         ? prev.filter(id => id !== recordId) 
         : [...prev, recordId]
     );
-  }, []);
+  };
   
-  const handleOpenDeleteSelected = React.useCallback(() => {
+  const handleOpenDeleteSelected = () => {
     if (selectedRecords.length === 0) return;
     handleOpenPasswordModal(
-      tRef.current.deleteSelectedTitle(selectedRecords.length),
+      t.deleteSelectedTitle(selectedRecords.length),
       () => handleConfirmDelete_Multi()
     );
-  }, [selectedRecords.length, tRef, handleOpenPasswordModal]);
+  };
 
-  const handleConfirmDelete_Multi = React.useCallback(async () => {
+  const handleConfirmDelete_Multi = async () => {
     if (!dbWrite || selectedRecords.length === 0) return;
     const updates = {};
     selectedRecords.forEach(recordId => {
@@ -507,22 +497,22 @@ function App() {
       console.error('Multi-Delete Error (dbWrite):', error);
       setAuthError(`Multi-Delete Error: ${error.message}`);
     }
-  }, [dbWrite, selectedRecords, ref, update, handleToggleSelectionMode]);
+  };
   
-  const handleOpenBulkDelete = React.useCallback((mode) => {
+  const handleOpenBulkDelete = (mode) => {
     setBulkDeleteMode(mode);
     setShowAdminModal(false);
     setTimeout(() => {
       handleOpenPasswordModal(
         mode === 'day' 
-          ? tRef.current.deleteByDateTitle(bulkDeleteDate)
-          : tRef.current.deleteByMonthTitle(bulkDeleteMonth),
+          ? t.deleteByDateTitle(bulkDeleteDate)
+          : t.deleteByMonthTitle(bulkDeleteMonth),
         () => handleConfirmBulkDelete(mode)
       );
     }, 100);
-  }, [bulkDeleteDate, bulkDeleteMonth, tRef, handleOpenPasswordModal]);
+  };
   
-  const handleConfirmBulkDelete = React.useCallback(async (mode) => {
+  const handleConfirmBulkDelete = async (mode) => {
     if (!dbWrite) return;
     setIsBulkLoading(true);
     setAuthError(null);
@@ -531,7 +521,7 @@ function App() {
       const attendanceRefDb = ref(dbWrite, 'attendance');
       const allDataSnapshot = await get(attendanceRefDb);
       if (!allDataSnapshot.exists()) {
-        showAlert(tRef.current.deleteNotFound, 'error');
+        showAlert(t.deleteNotFound, 'error');
         setIsBulkLoading(false);
         return;
       }
@@ -557,9 +547,9 @@ function App() {
       
       if (count > 0) {
         await update(ref(dbWrite), updates);
-        showAlert(tRef.current.deleteSuccess(count), 'success'); 
+        showAlert(t.deleteSuccess(count), 'success'); 
       } else {
-        showAlert(tRef.current.deleteNotFound, 'error');
+        showAlert(t.deleteNotFound, 'error');
       }
     } catch (error) {
       console.error('Bulk Delete Error:', error);
@@ -568,18 +558,18 @@ function App() {
       setIsBulkLoading(false);
       setBulkDeleteMode(null);
     }
-  }, [dbWrite, bulkDeleteDate, bulkDeleteMonth, tRef, showAlert, ref, get, update]);
+  };
   
   // --- មុខងារ Settings ថ្មី ---
   
-  const handleEditTotalPasses = React.useCallback(() => {
+  const handleEditTotalPasses = () => {
     handleOpenPasswordModal(
-      tRef.current.passwordRequired,
+      t.passwordRequired,
       () => {
         setInputPrompt({
           isOpen: true,
-          title: tRef.current.editPassTotal,
-          message: tRef.current.editPassTotalPrompt,
+          title: t.editPassTotal,
+          message: t.editPassTotalPrompt,
           defaultValue: totalPasses,
           type: 'number',
           onSubmit: (newTotalString) => {
@@ -588,13 +578,13 @@ function App() {
               const passRef = ref(dbWrite, 'passManagement/totalPasses');
               set(passRef, newTotal)
                 .then(() => {
-                  showAlert(tRef.current.passTotalSuccess, 'success');
+                  showAlert(t.passTotalSuccess, 'success');
                 })
                 .catch(err => {
                   setAuthError(`Error setting total passes: ${err.message}`);
                 });
             } else if (newTotalString) {
-              showAlert(tRef.current.invalidNumber, 'error');
+              showAlert(t.invalidNumber, 'error');
             }
             setInputPrompt({ isOpen: false }); 
           },
@@ -602,16 +592,16 @@ function App() {
         });
       }
     );
-  }, [handleOpenPasswordModal, tRef, totalPasses, dbWrite, ref, set, showAlert]);
+  };
   
-  const handleEditPassword = React.useCallback(() => {
+  const handleEditPassword = () => {
     handleOpenPasswordModal(
-      tRef.current.passwordRequired, 
+      t.passwordRequired, 
       () => {
         setInputPrompt({
           isOpen: true,
-          title: tRef.current.changePassword,
-          message: tRef.current.changePasswordPrompt,
+          title: t.changePassword,
+          message: t.changePasswordPrompt,
           defaultValue: '',
           type: 'text',
           onSubmit: (newPassword) => {
@@ -619,7 +609,7 @@ function App() {
               const passRef = ref(dbWrite, 'passManagement/adminPassword');
               set(passRef, newPassword)
                 .then(() => {
-                  showAlert(tRef.current.changePasswordSuccess, 'success');
+                  showAlert(t.changePasswordSuccess, 'success');
                 })
                 .catch(err => {
                   setAuthError(`Error setting password: ${err.message}`);
@@ -633,33 +623,34 @@ function App() {
         });
       }
     );
-  }, [handleOpenPasswordModal, tRef, dbWrite, ref, set, showAlert]);
+  };
 
-  const handleEditCheckInMode = React.useCallback(() => {
+  const handleEditCheckInMode = () => {
     handleOpenPasswordModal(
-      tRef.current.checkInMethodPrompt,
+      t.checkInMethodPrompt,
       () => {
         const newMode = checkInMode === 'scan' ? 'auto' : 'scan';
         const modeRef = ref(dbWrite, 'passManagement/checkInMode');
         set(modeRef, newMode)
           .then(() => {
-            showAlert(tRef.current.checkInModeSuccess, 'success');
+            showAlert(t.checkInModeSuccess, 'success');
           })
           .catch(err => {
             setAuthError(`Error setting check-in mode: ${err.message}`);
           });
       }
     );
-  }, [handleOpenPasswordModal, tRef, checkInMode, dbWrite, ref, set, showAlert]);
+  };
   
-  const handleCheckInByPassNumber = React.useCallback((passNumber) => {
+  const handleCheckInByPassNumber = (passNumber) => {
     if (!passNumber || isScannerBusy) { 
       return;
     }
     
+    // !! កែសម្រួល !!: ប្រើ State 'attendance' ជំនួស Ref
     const currentSortedStudentsOnBreak = students
       .map(student => {
-        const breaks = attendanceRef.current[student.id] || [];
+        const breaks = attendance[student.id] || [];
         const activeBreak = breaks.find(r => r.checkOutTime && !r.checkInTime);
         if (!activeBreak) return null; 
         return { student, record: activeBreak };
@@ -671,26 +662,27 @@ function App() {
     if (activeBreak) {
       setIsScannerBusy(true); 
       setScannerTriggeredCheckIn(activeBreak.student.id); 
-      setLastScannedInfo({ status: 'success', name: activeBreak.student.name || tRef.current.noName });
+      setLastScannedInfo({ status: 'success', name: activeBreak.student.name || t.noName });
       
       handleCheckIn(activeBreak.student.id);
       
     } else {
-      setLastScannedInfo({ status: 'fail', message: tRef.current.scanPassNotFound(passNumber) });
+      setLastScannedInfo({ status: 'fail', message: t.scanPassNotFound(passNumber) });
     }
-  }, [isScannerBusy, students, tRef, handleCheckIn]);
+  };
   
-  const handleOpenQrScanner = React.useCallback(() => {
+  const handleOpenQrScanner = () => {
     setLastScannedInfo(null);
     setScannerTriggeredCheckIn(null);
     setIsScannerBusy(false); 
     setShowQrScanner(true);
-  }, []);
+  };
 
   
   // --- Search Handlers ---
   
-  const handleSearchChange = React.useCallback((e) => {
+  // !! កែសម្រួល !!: ដក useCallback ចេញ
+  const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
     setSelectedStudentId(""); 
@@ -700,29 +692,27 @@ function App() {
     if (normalizedSearch === "") {
       setSearchResults([]); 
     } else {
-      const currentAttendance = attendanceRef.current;
-      const currentT = tRef.current;
-        
+      // ឥឡូវនេះ វានឹងប្រើ 'attendance' និង 't' ចុងក្រោយបំផុត ពី State
       const matches = students.filter(student => 
         (student.name && student.name.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch)) ||
         (student.idNumber && String(student.idNumber).replace(/\s+/g, '').includes(normalizedSearch))
       ).slice(0, 10); 
       
       const matchesWithStatus = matches.map(student => {
-        const studentBreaks = currentAttendance[student.id] || []; 
+        const studentBreaks = attendance[student.id] || []; 
         const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
         const completedBreaks = studentBreaks.filter(r => r.checkOutTime && r.checkInTime);
 
-        let statusText = currentT.statusNotYet; 
+        let statusText = t.statusNotYet; 
         let passNumber = null;
         let statusColor = 'text-gray-500';
 
         if (activeBreak) {
-          statusText = currentT.statusOnBreak; 
+          statusText = t.statusOnBreak; 
           passNumber = activeBreak.passNumber || null;
           statusColor = 'text-yellow-600';
         } else if (completedBreaks.length > 0) {
-          statusText = currentT.statusCompleted; 
+          statusText = t.statusCompleted; 
           statusColor = 'text-green-600';
         }
         
@@ -731,15 +721,15 @@ function App() {
       
       setSearchResults(matchesWithStatus);
     }
-  }, [students]);
+  };
 
 
-  const handleSelectStudentFromList = React.useCallback((student) => {
+  const handleSelectStudentFromList = (student) => {
     setSearchTerm(student.name || String(student.idNumber)); 
     setSelectedStudentId(student.id); 
     setSearchResults([]); 
     setIsSearchFocused(false); 
-  }, []);
+  };
 
 
   // --- Main Render ---
