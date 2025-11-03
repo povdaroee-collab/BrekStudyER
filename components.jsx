@@ -2,10 +2,8 @@
 // 4. MAIN UI COMPONENTS
 // =================================================================
 
-// !! កែសម្រួល !!: ត្រូវតែប្រកាស React និង Hooks នៅក្នុង File នីមួយៗ
-const { useState, useEffect } = React;
-
 // ត្រូវប្រាកដថា File នេះ ត្រូវបានហៅ (load) បន្ទាប់ពី setup.jsx
+// !! កែសម្រួល !!: ត្រូវទាញ React ពី window.appSetup មក *មុន*
 const { 
   React,
   calculateDuration,
@@ -23,6 +21,9 @@ const {
   IconClose,
   IconTimer, // ថ្មី
 } = window.appSetup;
+
+// !! កែសម្រួល !!: ត្រូវប្រកាស Hooks *បន្ទាប់ពី* React ត្រូវបានកំណត់
+const { useState, useEffect } = React;
 
 
 const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleCheckOut, handleCheckIn, handleOpenQrScanner, onDeleteClick, totalPasses, t, checkInMode, overtimeLimit }) => {
@@ -257,7 +258,7 @@ const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSele
         
         {isOvertime && (
           <p className="text-sm font-semibold text-red-300">
-            ({t.overtime} {overtimeMins} {t.minutes}) {/* <--- !! បានកែ !! លុប $ */}
+            ({t.overtime} {overtimeMins} {t.minutes})
           </p>
         )}
         {record.breakType === 'special' && (
