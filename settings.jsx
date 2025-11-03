@@ -2,179 +2,163 @@
 // 5. SETTINGS PAGE COMPONENT
 // =================================================================
 
-// ត្រូវប្រាកដថា File នេះ ត្រូវបានហៅ (load) បន្ទាប់ពី setup.jsx
-const { 
-  IconLanguage, 
-  IconPalette, 
-  IconTicket, 
-  IconTimer, // ថ្មី
-  IconToggleLeft, 
-  IconToggleRight,
-  IconLock,
-  IconCheckOut // ថ្មី
-} = window.appSetup;
-
-const SettingsPage = ({
-  t,
-  language,
-  setLanguage,
-  background,
-  setBackground,
-  checkInMode,
-  onEditCheckInMode,
-  onEditPassword,
-  passesInUse,
-  totalPasses,
-  onEditTotalPasses,
-  overtimeLimit, // ថ្មី
-  onEditOvertimeLimit // ថ្មី
+// --- Component សម្រាប់ Page "Settings" ទាំងមូល ---
+const SettingsPage = ({ 
+  t, language, setLanguage, background, setBackground,
+  checkInMode, onEditCheckInMode, onEditPassword,
+  passesInUse, totalPasses, onEditTotalPasses
 }) => {
-
-  const passesAvailable = totalPasses - passesInUse;
-
-  // --- UI សម្រាប់ General Settings ---
-  const renderGeneralSettings = () => (
-    <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-lg p-5 mb-6">
-      <h3 className="text-xl font-bold text-white mb-4">{t.generalSettings}</h3>
-      <div className="space-y-4">
-        
-        {/* Language Setting */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <IconLanguage className="w-6 h-6 text-blue-200 mr-3" />
-            <span className="text-lg text-white">{t.language}</span>
-          </div>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setLanguage('km')}
-              className={`px-4 py-2 rounded-full font-semibold ${language === 'km' ? 'bg-white text-blue-800' : 'bg-white/20 text-white'}`}
-            >
-              ខ្មែរ
-            </button>
-            <button
-              onClick={() => setLanguage('en')}
-              className={`px-4 py-2 rounded-full font-semibold ${language === 'en' ? 'bg-white text-blue-800' : 'bg-white/20 text-white'}`}
-            >
-              Eng
-            </button>
-          </div>
-        </div>
-        
-        {/* Background Setting */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <IconPalette className="w-6 h-6 text-blue-200 mr-3" />
-            <span className="text-lg text-white">{t.background}</span>
-          </div>
-          <div className="flex space-x-2">
-            <button onClick={() => setBackground('style1')} className={`w-8 h-8 rounded-full bg-gradient-to-br from-blue-900 to-indigo-700 border-2 ${background === 'style1' ? 'border-white' : 'border-transparent'}`}></button>
-            <button onClick={() => setBackground('style2')} className={`w-8 h-8 rounded-full bg-gradient-to-br from-gray-800 to-gray-900 border-2 ${background === 'style2' ? 'border-white' : 'border-transparent'}`}></button>
-            <button onClick={() => setBackground('style3')} className={`w-8 h-8 rounded-full bg-gradient-to-br from-green-800 to-teal-700 border-2 ${background === 'style3' ? 'border-white' : 'border-transparent'}`}></button>
-            <button onClick={() => setBackground('style4')} className={`w-8 h-8 rounded-full bg-gradient-to-br from-purple-800 to-pink-700 border-2 ${background === 'style4' ? 'border-white' : 'border-transparent'}`}></button>
-          </div>
-        </div>
-        
-      </div>
-    </div>
-  );
-
-  // --- UI សម្រាប់ Admin Settings ---
-  const renderAdminSettings = () => (
-    <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-lg p-5">
-      <h3 className="text-xl font-bold text-white mb-4">{t.adminSettings}</h3>
-      <div className="space-y-4">
-
-        {/* Pass Card Management */}
-        <div className="p-4 bg-black/10 rounded-lg">
-          <h4 className="text-lg font-semibold text-blue-200 mb-3">{t.passCardManagement}</h4>
-          <div className="flex justify-around text-white mb-4">
-            <div className="text-center">
-              <p className="text-4xl font-bold">{passesAvailable}</p>
-              <p className="text-sm text-blue-200">{t.passesAvailable}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-4xl font-bold text-red-300">{passesInUse}</p>
-              <p className="text-sm text-blue-200">{t.passesInUse}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-4xl font-bold">{totalPasses}</p>
-              <p className="text-sm text-blue-200">{t.passTotal}</p>
-            </div>
-          </div>
-          <button
-            onClick={onEditTotalPasses}
-            className="flex items-center justify-center w-full px-4 py-3 rounded-full text-md text-white font-bold transition-all shadow-lg bg-blue-500 hover:bg-blue-600"
-          >
-            <IconTicket className="w-5 h-5 mr-2" />
-            {t.editPassTotal}
-          </button>
-        </div>
-        
-        {/* !! ថ្មី !!: Overtime Settings */}
-        <div className="p-4 bg-black/10 rounded-lg">
-          <h4 className="text-lg font-semibold text-blue-200 mb-3">{t.overtimeSettings}</h4>
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-lg text-white">{t.overtimeLimit}:</span>
-            <span className="text-3xl font-bold text-white">{overtimeLimit} <span className="text-lg font-normal">{t.minutes}</span></span>
-          </div>
-          <button
-            onClick={onEditOvertimeLimit}
-            className="flex items-center justify-center w-full px-4 py-3 rounded-full text-md text-white font-bold transition-all shadow-lg bg-blue-500 hover:bg-blue-600"
-          >
-            <IconTimer className="w-5 h-5 mr-2" />
-            {t.overtimeLimit}
-          </button>
-        </div>
-
-        {/* Check-in Method */}
-        <div className="p-4 bg-black/10 rounded-lg">
-          <h4 className="text-lg font-semibold text-blue-200 mb-3">{t.checkInMethod}</h4>
-          <button
-            onClick={onEditCheckInMode}
-            className="flex items-center justify-center w-full px-4 py-3 rounded-full text-md text-white font-bold transition-all shadow-lg bg-blue-500 hover:bg-blue-600"
-          >
-            {checkInMode === 'scan' ? (
-              <>
-                <IconQrCode className="w-5 h-5 mr-2" /> {t.checkInMethodScan}
-              </>
-            ) : (
-              <>
-                {/* !! កែសម្រួល !!: បន្ថែម mr-2 វិញ សម្រាប់តែទីនេះ */}
-                <IconCheckIn className="w-5 h-5 mr-2" /> {t.checkInMethodAuto}
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Security */}
-        <div className="p-4 bg-black/10 rounded-lg">
-          <h4 className="text-lg font-semibold text-blue-200 mb-3">{t.security}</h4>
-          <button
-            onClick={onEditPassword}
-            className="flex items-center justify-center w-full px-4 py-3 rounded-full text-md text-white font-bold transition-all shadow-lg bg-orange-500 hover:bg-orange-600"
-          >
-            <IconLock className="w-5 h-5 mr-2" />
-            {t.changePassword}
-          </button>
-        </div>
-        
-      </div>
-    </div>
-  );
+  
+  // ទាញ Icons ពី Global Scope
+  const { 
+    IconLanguage, IconPalette, IconLock, IconTicket, IconSettings,
+    backgroundStyles 
+  } = window.appSetup;
 
   return (
-    <div className="pb-10">
-      <h2 className="text-3xl font-bold text-white text-center mb-6">{t.settingsTitle}</h2>
+    <div key="settings-page" className="pb-10 text-white">
+      <h2 className="text-3xl font-bold text-center mb-6">{t.settingsTitle}</h2>
+
+      {/* --- 1. គ្រប់គ្រងកាត --- */}
+      <SettingCard title={t.passManagement} icon={<IconTicket />}>
+        <PassesInfoSetting
+          t={t}
+          passesInUse={passesInUse}
+          totalPasses={totalPasses}
+          onEditTotal={onEditTotalPasses}
+        />
+      </SettingCard>
+
+      {/* --- 2. សុវត្ថិភាព --- */}
+      <SettingCard title={t.security} icon={<IconLock />}>
+        <button
+          onClick={onEditPassword}
+          className="w-full px-4 py-3 text-left text-lg font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg"
+        >
+          {t.changePassword}
+        </button>
+        
+        <CheckInModeSetting
+          t={t}
+          checkInMode={checkInMode}
+          onEditCheckInMode={onEditCheckInMode}
+        />
+      </SettingCard>
+
+      {/* --- 3. ភាសា --- */}
+      <SettingCard title={t.language} icon={<IconLanguage />}>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setLanguage('km')}
+            className={`w-1/2 py-3 rounded-lg font-bold ${language === 'km' ? 'bg-white text-blue-800' : 'bg-white/20 text-white'}`}
+          >
+            ខ្មែរ (KM)
+          </button>
+          <button
+            onClick={() => setLanguage('en')}
+            className={`w-1/2 py-3 rounded-lg font-bold ${language === 'en' ? 'bg-white text-blue-800' : 'bg-white/20 text-white'}`}
+          >
+            English (EN)
+          </button>
+        </div>
+      </SettingCard>
       
-      {/* ផ្នែកទី 1: ការកំណត់ទូទៅ */}
-      {renderGeneralSettings()}
-      
-      {/* ផ្នែកទី 2: ការកំណត់ Admin */}
-      {renderAdminSettings()}
+      {/* --- 4. ផ្ទៃខាងក្រោយ --- */}
+      <SettingCard title={t.background} icon={<IconPalette />}>
+        <div className="grid grid-cols-2 gap-4">
+          {Object.keys(backgroundStyles).map(key => (
+            <button
+              key={key}
+              onClick={() => setBackground(key)}
+              className={`h-20 rounded-lg ${backgroundStyles[key]} ${background === key ? 'ring-4 ring-white' : 'opacity-70'}`}
+            >
+              <span className="bg-black/20 px-2 py-1 rounded-full text-xs">{key}</span>
+            </button>
+          ))}
+        </div>
+      </SettingCard>
+
     </div>
   );
 };
 
+// --- Component តូចៗ សម្រាប់ Settings ---
+const SettingCard = ({ title, icon, children }) => (
+  <div className="w-full max-w-md mx-auto bg-white/10 backdrop-blur-lg rounded-3xl shadow-xl p-6 mb-6">
+    <div className="flex items-center mb-4">
+      <div className="p-2 bg-white/20 rounded-full">
+        {icon}
+      </div>
+      <h3 className="text-xl font-bold ml-4">{title}</h3>
+    </div>
+    <div className="space-y-4">
+      {children}
+    </div>
+  </div>
+);
+
+// --- Component សម្រាប់ បង្ហាញព័ត៌មានកាត ---
+const PassesInfoSetting = ({ t, passesInUse, totalPasses, onEditTotal }) => {
+  const { IconPencil } = window.appSetup;
+  const passesAvailable = totalPasses - passesInUse;
+
+  return (
+    <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-lg p-6 text-center">
+      <div className="flex justify-around text-white">
+        <div className="text-center">
+          <p className="text-4xl font-bold text-red-300">{passesInUse}</p>
+          <p className="text-lg text-blue-200">{t.passInUse}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-4xl font-bold text-green-300">{passesAvailable}</p>
+          <p className="text-lg text-blue-200">{t.passAvailable}</p>
+        </div>
+        <div className="text-center">
+          <p className="text-4xl font-bold">{totalPasses}</p>
+          <p className="text-lg text-blue-200">{t.passTotal}</p>
+        </div>
+      </div>
+      <div className="mt-6 border-t border-white/20 pt-4">
+        <button
+          onClick={onEditTotal}
+          className="flex items-center justify-center w-full px-4 py-3 rounded-full text-lg text-white font-bold transition-all shadow-lg bg-blue-500 hover:bg-blue-600"
+        >
+          <IconPencil />
+          {t.editPassTotal}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// --- Component សម្រាប់ ប្ដូររបៀប Check-in ---
+const CheckInModeSetting = ({ t, checkInMode, onEditCheckInMode }) => {
+  const { IconCheckIn, IconCheckOut } = window.appSetup;
+  
+  return (
+    <div className="mt-4">
+      <p className="text-sm text-blue-200 mb-2">{t.checkInMethod}</p>
+      {checkInMode === 'scan' ? (
+        <button 
+          onClick={onEditCheckInMode}
+          className="flex items-center justify-center w-full px-4 py-3 rounded-full text-lg text-white font-bold transition-all shadow-lg bg-blue-500 hover:bg-blue-600"
+        >
+          <IconCheckIn className="w-6 h-6 mr-2" />
+          {t.checkInMethodScan}
+        </button>
+      ) : (
+        <button 
+          onClick={onEditCheckInMode}
+          className="flex items-center justify-center w-full px-4 py-3 rounded-full text-lg text-white font-bold transition-all shadow-lg bg-green-500 hover:bg-green-600"
+        >
+          <IconCheckOut className="w-6 h-6 mr-2" />
+          {t.checkInMethodAuto}
+        </button>
+      )}
+    </div>
+  );
+};
+
+
 // ភ្ជាប់ទៅ Global Scope
 window.SettingsPage = SettingsPage;
-
