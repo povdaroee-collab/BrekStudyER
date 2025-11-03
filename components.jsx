@@ -1,28 +1,27 @@
-// !! ថ្មី !!: ទាញអថេរ និង Icons ពី Global Scope
-const {
-  calculateDuration,
-  OVERTIME_LIMIT_MINUTES,
-  IconCheckOut, IconCheckIn, IconSearch, IconClock, IconCheckCircle,
-  IconTicket, IconClose, IconTrash, IconNoSymbol, IconAlert,
-  IconSpecial, IconDotsVertical, IconLock, IconQrCode, IconPencil,
-  IconInfo, IconCheckCircleFill, IconPencilSquare
-} = window.appSetup;
-
 // =================================================================
 // 4. MAIN UI COMPONENTS
 // =================================================================
 
-window.StudentCard = ({ 
-  student, pageKey, passesInUse, attendance, now, 
-  handleCheckOut, 
-  handleCheckIn, // មុខងារ Check-in ស្វ័យប្រវត្តិ
-  handleOpenQrScanner, // មុខងារបើក Scanner
-  onDeleteClick, 
-  totalPasses, 
-  t, 
-  checkInMode 
-}) => {
+// --- ទាញ (Destructure) Dependencies ពី Global Scope ---
+const {
+  calculateDuration,
+  IconCheckOut,
+  IconCheckIn,
+  IconTrash,
+  IconSpecial,
+  IconNoSymbol,
+  IconAlert,
+  IconLock,
+  IconDotsVertical,
+  IconPencilSquare,
+  IconCheckCircleFill,
+  IconClose,
+} = window.appSetup;
+
+
+const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleCheckOut, handleCheckIn, handleOpenQrScanner, onDeleteClick, totalPasses, t, checkInMode }) => {
   
+  // --- (Logic គណនា Status) ---
   const studentBreaks = attendance[student.id] || [];
   const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
   const completedBreaks = studentBreaks.filter(r => r.checkOutTime && r.checkInTime);
@@ -37,10 +36,10 @@ window.StudentCard = ({
   
   if (activeBreak) {
     const elapsedMins = calculateDuration(activeBreak.checkOutTime, now.toISOString());
-    const isOvertime = elapsedMins > OVERTIME_LIMIT_MINUTES;
+    const isOvertime = elapsedMins > appSetup.OVERTIME_LIMIT_MINUTES; 
     
-    const passNumberDisplay = activeBreak.passNumber ? ` (${t.statusPass}: ${activeBreak.passNumber})` : '';
-    statusText = `${t.statusOnBreak}${passNumberDisplay} (${elapsedMins} ${t.statusMinutes})`; 
+    const passNumberDisplay = activeBreak.passNumber ? ` (${activeBreak.passNumber})` : '';
+    statusText = `${t.statusOnBreak}${passNumberDisplay} (${elapsedMins} ${t.minutes})`; 
     
     statusClass = isOvertime 
       ? 'bg-red-600 text-white animate-pulse' 
@@ -54,17 +53,17 @@ window.StudentCard = ({
   } else if (completedBreaks.length > 0) {
     const lastBreak = completedBreaks[completedBreaks.length - 1]; 
     const duration = calculateDuration(lastBreak.checkOutTime, lastBreak.checkInTime);
-    const isCompletedOvertime = duration > OVERTIME_LIMIT_MINUTES;
-    const overtimeMins = isCompletedOvertime ? duration - OVERTIME_LIMIT_MINUTES : 0;
+    const isCompletedOvertime = duration > appSetup.OVERTIME_LIMIT_MINUTES;
+    const overtimeMins = isCompletedOvertime ? duration - appSetup.OVERTIME_LIMIT_MINUTES : 0;
     
     statusText = isCompletedOvertime
-      ? `${t.statusCompleted} (${t.statusOvertime} ${overtimeMins} ${t.statusMinutes})`
-      : `${t.statusCompleted} (${duration} ${t.statusMinutes})`; 
+      ? `${t.statusCompleted} (${t.overtime} ${overtimeMins} ${t.minutes})`
+      : `${t.statusCompleted} (${duration} ${t.minutes})`; 
     statusClass = isCompletedOvertime
       ? 'bg-red-600 text-white' 
       : 'bg-green-600 text-white';
     canCheckIn = false;
-    canCheckOut = true; 
+    canCheckOut = false; // សម្រាករួច មិនអាច Check Out ទៀតទេ
     
     if (studentBreaks.some(r => r.breakType === 'special')) {
       isSpecialCase = true;
@@ -82,15 +81,12 @@ window.StudentCard = ({
     statusText = `${t.statusPassOut} (${passesInUse}/${totalPasses})`;
     statusClass = 'bg-red-600 text-white';
   }
+  // --- (ចប់ Logic គណនា Status) ---
+  
   
   const photoUrl =
     student.photoUrl ||
     `https://placehold.co/128x128/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
-
-  // !! ថ្មី !!: សម្រេចចិត្តថាតើប៊ូតុង "ចូលវិញ" ត្រូវធ្វើអ្វី
-  const checkInAction = checkInMode === 'scan' 
-    ? handleOpenQrScanner 
-    : () => handleCheckIn(student.id);
 
   return (
     <div
@@ -101,7 +97,7 @@ window.StudentCard = ({
         <button
           onClick={(e) => onDeleteClick(e, student, activeBreak)}
           className="absolute top-4 right-4 text-red-300 bg-red-900/50 p-2 rounded-full transition-all hover:bg-red-500 hover:text-white"
-          title={t.delete}
+          title={t.deleteTooltip}
         >
           <IconTrash />
         </button>
@@ -109,7 +105,7 @@ window.StudentCard = ({
       
       <img
         src={photoUrl}
-        alt={`រូបថតរបស់ ${student.name || t.noName}`}
+        alt={`${t.photoOf} ${student.name || t.noName}`}
         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
         onError={(e) => {
           e.target.src = `https://placehold.co/128x128/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
@@ -128,50 +124,68 @@ window.StudentCard = ({
         </p>
       </div>
       
-      <div className="my-6 text-center">
-         <p className={`inline-flex items-center px-5 py-2 rounded-full text-md font-semibold ${statusClass}`}>
-          {statusText}
-          {isSpecialCase && <IconSpecial />}
-        </p>
-      </div>
 
-      {(canCheckOut || canCheckIn) && (
-        <div className="flex flex-col space-y-3">
-          {canCheckOut && (
+      {/* !! កែសម្រួល Layout ប៊ូតុង និង Status !! */}
+      
+      {/* ករណីទី 1: កំពុងសម្រាក (បង្ហាញ Status នៅលើ, ប៊ូតុងចូលវិញ នៅក្រោម) */}
+      {canCheckIn && (
+        <React.Fragment>
+          <div className="my-6 text-center">
+            <p className={`inline-flex items-center px-5 py-2 rounded-full text-md font-semibold ${statusClass}`}>
+              {statusText}
+              {isSpecialCase && <IconSpecial />}
+            </p>
+          </div>
+          <div className="flex flex-col space-y-3">
             <button
-              onClick={() => handleCheckOut(student.id)}
-              disabled={!canCheckOut} 
-              className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-white font-bold transition-all transform hover:scale-105 shadow-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-            >
-              <IconCheckOut />
-              {t.checkOut}
-            </button>
-          )}
-          
-          {canCheckIn && (
-            <button
-              onClick={checkInAction} // !! កែសម្រួល !!
+              onClick={checkInMode === 'scan' ? () => handleOpenQrScanner() : () => handleCheckIn(student.id)}
               disabled={!canCheckIn}
               className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-blue-800 font-bold transition-all transform hover:scale-105 shadow-lg bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
             >
-              <IconCheckIn />
+              <IconCheckIn className="w-6 h-6 mr-2" /> {/* បន្ថែម mr-2 វិញ ព្រោះមានអក្សរ */}
               {t.checkIn}
             </button>
-          )}
+          </div>
+        </React.Fragment>
+      )}
+      
+      {/* ករណីទី 2: មិនទាន់សម្រាក (បង្ហាញ Status និង ប៊ូតុងចេញ ជួរដេកតែមួយ) */}
+      {canCheckOut && (
+        <div className="my-6 flex items-center justify-center space-x-4">
+          {/* Status Text (flex-1 ធ្វើឱ្យវាពេញ) */}
+          <p className={`flex-1 inline-flex items-center justify-center px-5 py-3 rounded-full text-md font-semibold ${statusClass}`}>
+            {statusText}
+            {isSpecialCase && <IconSpecial />}
+          </p>
+          
+          {/* Icon-only Button (flex-shrink-0 មិនឱ្យវារួមតូច) */}
+          <button
+            onClick={() => handleCheckOut(student.id)}
+            disabled={!canCheckOut} 
+            className="flex-shrink-0 flex items-center justify-center p-4 h-14 w-14 rounded-full text-lg text-white font-bold transition-all transform hover:scale-105 shadow-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+            aria-label={t.checkOut}
+          >
+            <IconCheckOut /> {/* Icon នេះគ្មាន mr-2 ទេ */}
+          </button>
         </div>
       )}
       
-      {!canCheckOut && statusText.startsWith(t.statusPassOut) && (
-        <div className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-white font-bold bg-red-600/50 opacity-80 cursor-not-allowed">
-          <IconNoSymbol />
-          {t.passOutWarning}
-        </div>
+      {/* ករណីទី 3: សម្រាករួចរាល់ ឬ កាតអស់ (!canCheckIn && !canCheckOut) */}
+      {!canCheckIn && !canCheckOut && (
+         <div className="my-6 text-center">
+            <p className={`inline-flex items-center justify-center px-5 py-3 rounded-full text-md font-semibold ${statusClass} ${statusClass.includes('red') ? 'w-full' : ''}`}>
+              {statusClass.includes('red') && <IconNoSymbol />} 
+              {statusText}
+              {isSpecialCase && <IconSpecial />}
+            </p>
+          </div>
       )}
+
     </div>
   );
 };
 
-window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSelect, onDeleteClick, isSelectionMode, t }) => {
+const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSelect, onDeleteClick, isSelectionMode, t }) => {
   
   const formatTime = (isoString) => {
     if (!isoString) return 'N/A';
@@ -183,8 +197,8 @@ window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSel
 
   const duration = calculateDuration(record?.checkOutTime, record?.checkInTime);
   
-  const isOvertime = duration > OVERTIME_LIMIT_MINUTES;
-  const overtimeMins = isOvertime ? duration - OVERTIME_LIMIT_MINUTES : 0;
+  const isOvertime = duration > appSetup.OVERTIME_LIMIT_MINUTES;
+  const overtimeMins = isOvertime ? duration - appSetup.OVERTIME_LIMIT_MINUTES : 0;
   const cardColor = isOvertime 
     ? 'bg-red-800/30 backdrop-blur-lg border border-red-500/30' 
     : 'bg-white/10 backdrop-blur-lg'; 
@@ -210,7 +224,7 @@ window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSel
       )}
       <img
         src={photoUrl}
-        alt={`រូបថតរបស់ ${student.name || t.noName}`}
+        alt={`${t.photoOf} ${student.name || t.noName}`}
         className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
         onError={(e) => {
           e.target.src = `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
@@ -232,7 +246,7 @@ window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSel
         
         {isOvertime && (
           <p className="text-sm font-semibold text-red-300">
-            ({t.statusOvertime} {overtimeMins} {t.statusMinutes})
+            ({t.overtime} {overtimeMins} {t.minutes}) {/* <--- បានលុប $ */}
           </p>
         )}
         {record.breakType === 'special' && (
@@ -244,14 +258,14 @@ window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSel
       
       <div className="text-center px-2">
         <p className={`text-2xl font-bold ${durationColor}`}>{duration}</p>
-        <p className="text-xs text-blue-200">{t.statusMinutes}</p>
+        <p className="text-xs text-blue-200">{t.minutes}</p>
       </div>
       
       {!isSelectionMode && (
         <button
           onClick={(e) => onDeleteClick(e)}
           className="p-3 rounded-full text-red-300 bg-white/10 transition-colors hover:bg-red-500 hover:text-white"
-          title={t.delete}
+          title={t.deleteTooltip}
         >
           <IconTrash />
         </button>
@@ -260,14 +274,7 @@ window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSel
   );
 };
 
-window.OnBreakStudentListCard = ({ 
-  student, record, elapsedMins, isOvertime, 
-  onCheckIn, 
-  handleOpenQrScanner, 
-  onDeleteClick, 
-  t, 
-  checkInMode
-}) => {
+const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCheckIn, handleOpenQrScanner, onDeleteClick, t, checkInMode }) => {
   
   const cardColor = isOvertime 
     ? 'bg-red-800/30 backdrop-blur-lg border border-red-500/30' 
@@ -278,16 +285,12 @@ window.OnBreakStudentListCard = ({
   const photoUrl =
     student.photoUrl ||
     `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
-    
-  const checkInAction = checkInMode === 'scan' 
-    ? handleOpenQrScanner 
-    : () => onCheckIn();
 
   return (
     <div className={`w-full max-w-md mx-auto rounded-2xl shadow-lg p-4 mb-3 flex items-center space-x-3 ${cardColor}`}>
       <img
         src={photoUrl}
-        alt={`រូបថតរបស់ ${student.name || t.noName}`}
+        alt={`${t.photoOf} ${student.name || t.noName}`}
         className="w-16 h-16 rounded-full object-cover border-2 border-white/50 shadow-md"
         onError={(e) => { e.target.src = `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`; }}
       />
@@ -296,10 +299,10 @@ window.OnBreakStudentListCard = ({
           {student.name || t.noName}
         </p>
         <p className={`text-sm font-semibold ${textColor} inline-flex items-center`}>
-          {isOvertime ? t.overtimeExclamation : t.statusOnBreak}
+          {isOvertime ? t.overtime : t.statusOnBreakShort}
           {record.breakType === 'special' && (
             <span className="ml-2 px-2 py-0.5 text-xs text-purple-800 bg-purple-300 rounded-full">
-              {t.specialCase}
+              {t.specialCaseShort}
             </span>
           )}
         </p>
@@ -310,14 +313,14 @@ window.OnBreakStudentListCard = ({
       
       <div className="text-center px-2">
         <p className={`text-2xl font-bold ${textColor}`}>{elapsedMins}</p>
-        <p className="text-xs text-blue-200">{t.statusMinutes}</p>
+        <p className="text-xs text-blue-200">{t.minutes}</p>
       </div>
       
       <div className="flex flex-col space-y-2">
         <button
-          onClick={checkInAction} 
+          onClick={checkInMode === 'scan' ? () => handleOpenQrScanner() : () => onCheckIn()}
           className="p-3 rounded-full text-blue-800 bg-white transition-colors hover:bg-gray-200"
-          title={t.checkIn}
+          title={t.checkInTooltip}
         >
           <IconCheckIn />
         </button>
@@ -325,7 +328,7 @@ window.OnBreakStudentListCard = ({
         <button
           onClick={(e) => onDeleteClick(e)}
           className="p-3 rounded-full text-red-300 bg-white/10 transition-colors hover:bg-red-500 hover:text-white"
-          title={t.delete}
+          title={t.deleteTooltip}
         >
           <IconTrash />
         </button>
@@ -334,7 +337,7 @@ window.OnBreakStudentListCard = ({
   );
 };
 
-window.PasswordConfirmationModal = ({ prompt, onSubmit, onCancel, t }) => {
+const PasswordConfirmationModal = ({ prompt, onSubmit, onCancel, t }) => {
   if (!prompt.isOpen) return null;
   
   const [password, setPassword] = useState("");
@@ -366,7 +369,7 @@ window.PasswordConfirmationModal = ({ prompt, onSubmit, onCancel, t }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg"
-            placeholder={t.passwordPrompt}
+            placeholder={t.passwordPlaceholder}
             autoFocus
           />
           {prompt.error && (
@@ -393,7 +396,7 @@ window.PasswordConfirmationModal = ({ prompt, onSubmit, onCancel, t }) => {
   );
 };
 
-window.AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkLoading, bulkDeleteDate, setBulkDeleteDate, bulkDeleteMonth, setBulkDeleteMonth, t }) => {
+const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkLoading, bulkDeleteDate, setBulkDeleteDate, bulkDeleteMonth, setBulkDeleteMonth, t }) => {
   if (!isOpen) return null;
   
   return (
@@ -408,7 +411,7 @@ window.AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulk
         <div className="w-16 h-1.5 bg-gray-300 rounded-full mx-auto mb-4"></div>
         
         <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-          {t.adminFunctions}
+          {t.adminTitle}
         </h3>
         
         <div className="space-y-3">
@@ -432,7 +435,7 @@ window.AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulk
               className="w-full mt-2 px-4 py-3 text-lg font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50"
               disabled={isBulkLoading}
             >
-              {isBulkLoading ? t.deleting : t.deleteDaily}
+              {isBulkLoading ? t.deleting : t.deleteByDateButton}
             </button>
           </div>
           
@@ -449,7 +452,7 @@ window.AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulk
               className="w-full mt-2 px-4 py-3 text-lg font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
               disabled={isBulkLoading}
             >
-              {isBulkLoading ? t.deleting : t.deleteMonthly}
+              {isBulkLoading ? t.deleting : t.deleteByMonthButton}
             </button>
           </div>
           
@@ -459,7 +462,7 @@ window.AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulk
   );
 };
 
-window.CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiSelect, selectionCount, isSelectionMode, t }) => {
+const CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiSelect, selectionCount, isSelectionMode, t }) => {
   return (
     <div className="w-full max-w-md mx-auto mb-4 flex justify-between items-center">
       {!isSelectionMode ? (
@@ -470,7 +473,7 @@ window.CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiS
           <button
             onClick={onAdminClick}
             className="p-3 rounded-full text-white bg-white/10 transition-colors hover:bg-white/30"
-            title={t.adminFunctions}
+            title={t.adminTitle}
           >
             <IconDotsVertical />
           </button>
@@ -496,13 +499,13 @@ window.CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiS
   );
 };
 
-window.LoadingSpinner = () => (
+const LoadingSpinner = () => (
   <div className="flex justify-center items-center mt-10">
     <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
 
-window.DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm, t }) => {
+const DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm, t }) => {
     if (!recordToDelete) return null;
     
     const { student } = recordToDelete;
@@ -518,7 +521,7 @@ window.DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm, t }) =>
         >
           <IconAlert />
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            {t.deleteConfirmTitle}
+            {t.deleteTitle}
           </h3>
           <p className="text-gray-600 mb-6">
             {t.deleteConfirmMessage(student.name)}
@@ -543,7 +546,7 @@ window.DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm, t }) =>
   };
 
 
-window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isScannerBusy, t }) => { 
+const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isScannerBusy, t }) => { 
   const [errorMessage, setErrorMessage] = useState(null);
   
   const html5QrCodeRef = React.useRef(null);
@@ -555,6 +558,7 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
       setErrorMessage(null);
       
       if (!isScannerBusy) {
+        
         const element = document.getElementById(scannerId);
         if (element) {
             const html5QrCode = new Html5Qrcode(scannerId);
@@ -569,7 +573,7 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
             html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
               .catch(err => {
                 console.error("Unable to start scanner", err);
-                setErrorMessage(t.scanCameraError);
+                setErrorMessage(t.cameraError);
               });
         }
       }
@@ -595,7 +599,7 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
       }
     };
     
-  }, [isOpen, isScannerBusy]); 
+  }, [isOpen, isScannerBusy, t.cameraError, onScanSuccess]); 
 
   if (!isOpen) return null;
 
@@ -616,7 +620,7 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
         </button>
         
         <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-          {t.scanTitle}
+          {t.scanToComeBack}
         </h3>
         
         <div id={scannerId} className="w-full"></div> 
@@ -625,7 +629,7 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
           {isScannerBusy && (
              <div className="flex justify-center items-center">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-blue-600 text-xl font-bold ml-3">{t.scanProcessing}</p>
+                <p className="text-blue-600 text-xl font-bold ml-3">{t.processing}</p>
              </div>
           )}
           
@@ -635,12 +639,12 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
           
           {!isScannerBusy && lastScannedInfo && lastScannedInfo.status === 'success' && (
             <p className="text-green-600 text-xl font-bold animate-pulse">
-              ✔ {t.scanSuccess}: {lastScannedInfo.name}
+              ✔ {t.scanned}: {lastScannedInfo.name}
             </p>
           )}
           
           {!isScannerBusy && lastScannedInfo && lastScannedInfo.status === 'fail' && (
-            <p className="text-red-600 text-xl font-bold">
+            <p className="text-red-500 text-xl font-bold">
               ✖ {lastScannedInfo.message}
             </p>
           )}
@@ -651,7 +655,7 @@ window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSc
   );
 };
 
-window.InfoAlertModal = ({ alertInfo, onClose, t }) => {
+const InfoAlertModal = ({ alertInfo, onClose, t }) => {
   if (!alertInfo.isOpen) return null;
   
   const isError = alertInfo.type === 'error';
@@ -668,7 +672,7 @@ window.InfoAlertModal = ({ alertInfo, onClose, t }) => {
         {isError ? <IconAlert /> : <IconCheckCircleFill />}
         
         <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          {isError ? t.problem : t.success}
+          {isError ? t.alertErrorTitle : t.alertSuccessTitle}
         </h3>
         
         <p className="text-gray-600 mb-6" style={{ whiteSpace: 'pre-line' }}>
@@ -686,7 +690,7 @@ window.InfoAlertModal = ({ alertInfo, onClose, t }) => {
   );
 };
 
-window.InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
+const InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
   if (!promptInfo.isOpen) return null;
   
   const [value, setValue] = useState(promptInfo.defaultValue || "");
@@ -713,7 +717,7 @@ window.InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
         
         <form onSubmit={handleSubmit}>
           <input 
-            type={promptInfo.type || "text"}
+            type={promptInfo.type || 'text'}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg"
@@ -739,4 +743,17 @@ window.InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
     </div>
   );
 };
+
+// ភ្ជាប់ Components ទៅ Global Scope
+window.StudentCard = StudentCard;
+window.CompletedStudentListCard = CompletedStudentListCard;
+window.OnBreakStudentListCard = OnBreakStudentListCard;
+window.PasswordConfirmationModal = PasswordConfirmationModal;
+window.AdminActionModal = AdminActionModal;
+window.CompletedListHeader = CompletedListHeader;
+window.LoadingSpinner = LoadingSpinner;
+window.DeleteConfirmationModal = DeleteConfirmationModal;
+window.QrScannerModal = QrScannerModal;
+window.InfoAlertModal = InfoAlertModal;
+window.InputPromptModal = InputPromptModal;
 
