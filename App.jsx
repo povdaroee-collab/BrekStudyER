@@ -2,28 +2,44 @@
 // 5. APP LOGIC & RENDER
 // =================================================================
 function App() {
+  
+  // !! ថ្មី !!: ទាញអថេរ និង Functions ពី Global Scope
+  const {
+    getTodayLocalDateString,
+    getTodayLocalMonthString,
+    calculateDuration,
+    firebaseConfigRead,
+    firebaseConfigWrite,
+    translations, // <-- នេះជាអថេរដែលបាត់
+    backgroundStyles,
+    IconSearch, IconClock, IconCheckCircle, IconQrCode, IconSettings, IconTicket
+  } = window.appSetup;
+
+  // !! ថ្មី !!: ទាញ Components ពី Global Scope
+  const { 
+    StudentCard, OnBreakStudentListCard, CompletedStudentListCard, 
+    CompletedListHeader, LoadingSpinner, DeleteConfirmationModal,
+    PasswordConfirmationModal, AdminActionModal, QrScannerModal,
+    InfoAlertModal, InputPromptModal
+  } = window; 
+  
+  const { SettingsPage } = window; 
+
+  // --- States ---
   const [dbRead, setDbRead] = useState(null); 
   const [dbWrite, setDbWrite] = useState(null); 
-  
   const [userId, setUserId] = useState(null); 
   const [students, setStudents] = useState([]); 
   const [attendance, setAttendance] = useState({}); 
-  
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStudentId, setSelectedStudentId] = useState(""); 
-  
   const [currentPage, setCurrentPage] = useState('search'); 
-  
   const [authError, setAuthError] = useState(null); 
-  
   const [modalStudent, setModalStudent] = useState(null);
-  
   const [now, setNow] = useState(new Date());
-  
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
-  
   const [passwordPrompt, setPasswordPrompt] = useState({ isOpen: false });
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedRecords, setSelectedRecords] = useState([]);
@@ -32,29 +48,20 @@ function App() {
   const [bulkDeleteDate, setBulkDeleteDate] = useState(getTodayLocalDateString());
   const [bulkDeleteMonth, setBulkDeleteMonth] = useState(getTodayLocalMonthString());
   const [isBulkLoading, setIsBulkLoading] = useState(false);
-  
   const [recordToDelete, setRecordToDelete] = useState(null);
-
-  // States សម្រាប់ចំនួនកាត
   const [totalPasses, setTotalPasses] = useState(0); 
-
-  // States សម្រាប់ QR Scanner ឆ្លាតវៃ
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [isScannerBusy, setIsScannerBusy] = useState(false); 
   const [lastScannedInfo, setLastScannedInfo] = useState(null); 
   const [scannerTriggeredCheckIn, setScannerTriggeredCheckIn] = useState(null); 
-
-  // States សម្រាប់ Modals ស្អាតៗ
   const [infoAlert, setInfoAlert] = useState({ isOpen: false, message: '', type: 'info' });
   const [inputPrompt, setInputPrompt] = useState({ isOpen: false });
-
-  // --- States សម្រាប់ Settings Page ---
   const [language, setLanguage] = useState(localStorage.getItem('break_lang') || 'km');
   const [background, setBackground] = useState(localStorage.getItem('break_bg') || 'style1');
-  const [adminPassword, setAdminPassword] = useState('4545ak0'); // Default (នឹងត្រូវបានទាញពី Firebase)
-  const [checkInMode, setCheckInMode] = useState('scan'); // Default (នឹងត្រូវបានទាញពី Firebase)
+  const [adminPassword, setAdminPassword] = useState(null); // !! កែសម្រួល !!: ចាប់ផ្តើមពី null
+  const [checkInMode, setCheckInMode] = useState('scan'); 
   
-  // Object បកប្រែភាសា
+  // Object បកប្រែភាសា (ឥឡូវនេះ translations ស្គាល់ហើយ)
   const t = translations[language] || translations['km'];
 
   // --- មុខងារ TTS ---
@@ -82,7 +89,6 @@ function App() {
     return () => clearInterval(timer);
   }, []); 
 
-  // Effect សម្រាប់រក្សាទុក Settings (Local)
   useEffect(() => {
     localStorage.setItem('break_lang', language);
   }, [language]);
@@ -171,7 +177,7 @@ function App() {
 
       // 2. ទាញទិន្នន័យវត្តមាន (ពី dbWrite)
       const attendanceRef = ref(dbWrite, 'attendance');
-      const qAttendance = rtdbQuery(attendanceRef, orderByChild('date'), equalTo(todayString));
+      const qAttendance = rtdbQuery(attendanceRef, orderByChild('date'), equalTo(appSetup.todayString));
       const unsubscribeAttendance = onValue(qAttendance, (snapshot) => {
           const attMap = {};
           const attData = snapshot.val();
@@ -211,9 +217,12 @@ function App() {
         if (pass) {
           setAdminPassword(pass);
           console.log("Admin password fetched.");
+        } else {
+           setAdminPassword('4545ak0'); // Set default បើរកមិនឃើញ
         }
       }, (error) => {
         console.error('Admin Password Fetch Error (dbWrite):', error);
+        setAdminPassword('4545ak0'); // Set default បើ Error
       });
       
       // 5. ទាញ របៀប Check-in (ពី dbWrite)
@@ -236,7 +245,7 @@ function App() {
         unsubscribeCheckInMode();
       };
     }
-  }, [dbRead, dbWrite, todayString]); 
+  }, [dbRead, dbWrite, appSetup.todayString]); 
 
   // --- Data Preparation for Render ---
   const sortedStudentsOnBreak = students
@@ -245,7 +254,7 @@ function App() {
       const activeBreak = breaks.find(r => r.checkOutTime && !r.checkInTime);
       if (!activeBreak) return null; 
       const elapsedMins = calculateDuration(activeBreak.checkOutTime, now.toISOString()); 
-      const isOvertime = elapsedMins > OVERTIME_LIMIT_MINUTES; 
+      const isOvertime = elapsedMins > appSetup.OVERTIME_LIMIT_MINUTES; 
       return { student, record: activeBreak, elapsedMins, isOvertime };
     })
     .filter(Boolean) 
@@ -335,7 +344,7 @@ function App() {
     }
 
     const now = new Date();
-    const studentBreaks = attendance[studentId] || [];
+    const studentBreaks = attendance[student.id] || [];
     const completedBreaks = studentBreaks.filter(r => r.checkInTime && r.checkOutTime);
     const breakCount = completedBreaks.length;
     let breakType = (breakCount >= 2) ? "special" : "normal";
@@ -347,7 +356,7 @@ function App() {
     try {
       await set(newRecordRef, {
         studentId: studentId, 
-        date: todayString,
+        date: appSetup.todayString,
         checkInTime: null,
         checkOutTime: now.toISOString(), 
         breakType: breakType,
@@ -371,7 +380,7 @@ function App() {
       return;
     }
     
-    const studentBreaks = attendance[studentId] || [];
+    const studentBreaks = attendance[student.id] || [];
     const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
     
     if (!activeBreak) {
@@ -420,6 +429,10 @@ function App() {
   };
   
   const handlePasswordSubmit = (password) => {
+    if (!adminPassword) { 
+        setPasswordPrompt(prev => ({ ...prev, error: "សូមរង់ចាំ... Password កំពុង Load" }));
+        return;
+    }
     if (password === adminPassword) {
       passwordPrompt.onConfirm();
       setPasswordPrompt({ isOpen: false });
@@ -575,9 +588,8 @@ function App() {
   
   const handleEditPassword = () => {
     handleOpenPasswordModal(
-      t.passwordRequired, // បញ្ចូល Password ចាស់
+      t.passwordRequired, 
       () => {
-        // បើ Password ចាស់ត្រូវ -> បើក Prompt សួរ Password ថ្មី
         setInputPrompt({
           isOpen: true,
           title: t.changePassword,
@@ -609,7 +621,6 @@ function App() {
     handleOpenPasswordModal(
       t.checkInMethodPrompt,
       () => {
-        // បើ Password ត្រូវ -> ប្តូរ Mode
         const newMode = checkInMode === 'scan' ? 'auto' : 'scan';
         const modeRef = ref(dbWrite, 'passManagement/checkInMode');
         set(modeRef, newMode)
@@ -654,7 +665,6 @@ function App() {
   
   // --- Search Handlers ---
   
-  // !! កែសម្រួល !!: បន្ថែម Status ទៅក្នុងលទ្ធផលស្វែងរក
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
@@ -665,13 +675,11 @@ function App() {
     if (normalizedSearch === "") {
       setSearchResults([]); 
     } else {
-      // 1. ស្វែងរក
       const matches = students.filter(student => 
         (student.name && student.name.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch)) ||
         (student.idNumber && String(student.idNumber).replace(/\s+/g, '').includes(normalizedSearch))
       ).slice(0, 10); 
       
-      // 2. បន្ថែម Status ពី attendance (Realtime)
       const matchesWithStatus = matches.map(student => {
         const studentBreaks = attendance[student.id] || [];
         const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
@@ -684,16 +692,16 @@ function App() {
         if (activeBreak) {
           statusText = t.statusOnBreak;
           passNumber = activeBreak.passNumber || null;
-          statusColor = 'text-yellow-600'; // ពណ៌កំពុងសម្រាក
+          statusColor = 'text-yellow-600';
         } else if (completedBreaks.length > 0) {
           statusText = t.statusCompleted;
-          statusColor = 'text-green-600'; // ពណ៌សម្រាករួច
+          statusColor = 'text-green-600';
         }
         
         return { ...student, statusText, passNumber, statusColor };
       });
       
-      setSearchResults(matchesWithStatus); // 3. រក្សាទុកលទ្ធផលថ្មី
+      setSearchResults(matchesWithStatus);
     }
   };
   
@@ -718,7 +726,7 @@ function App() {
               {t.appTitle}
             </h1>
             <p className="text-xl text-center text-blue-200 mb-6">
-              {displayDate}
+              {appSetup.displayDate}
             </p>
           </div>
 
@@ -816,7 +824,6 @@ function App() {
                       className="block w-full px-6 py-4 bg-white/20 border border-white/30 rounded-full text-white text-lg placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white shadow-inner"
                     />
                     
-                    {/* !! កែសម្រួល !!: បង្ហាញ Status ក្នុងលទ្ធផលស្វែងរក */}
                     {isSearchFocused && searchResults.length > 0 && (
                       <div className="absolute z-10 w-full max-w-md mt-2 bg-white/90 backdrop-blur-lg rounded-2xl shadow-lg max-h-80 overflow-y-auto">
                         {searchResults.map(student => ( 
@@ -1042,3 +1049,4 @@ function App() {
 const container = document.getElementById('root');
 const root = ReactDOM.createRoot(container);
 root.render(<App />);
+
