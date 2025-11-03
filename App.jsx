@@ -24,9 +24,6 @@ function App() {
   } = window; 
   
   const { SettingsPage } = window; 
-  
-  // !! កែសម្រួល !!: ត្រូវតែប្រកាស Hooks របស់ React នៅទីនេះ
-  const { useState, useEffect } = React; 
 
   // --- States ---
   const [dbRead, setDbRead] = useState(null); 
@@ -53,7 +50,6 @@ function App() {
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
   const [totalPasses, setTotalPasses] = useState(0); 
-  const [overtimeLimit, setOvertimeLimit] = useState(15); // !! ថ្មី !!: State សម្រាប់ Overtime
   const [showQrScanner, setShowQrScanner] = useState(false);
   const [isScannerBusy, setIsScannerBusy] = useState(false); 
   const [lastScannedInfo, setLastScannedInfo] = useState(null); 
@@ -66,6 +62,7 @@ function App() {
   const [checkInMode, setCheckInMode] = useState('scan'); 
   
   // --- Refs សម្រាប់ Stale State ---
+  // !! កែសម្រួល !!: មិនប្រើ Refs សម្រាប់ State ទៀតទេ
   const t = translations[language] || translations['km'];
 
   // --- មុខងារ TTS ---
@@ -100,6 +97,9 @@ function App() {
   useEffect(() => {
     localStorage.setItem('break_bg', background);
   }, [background]);
+  
+  // !! លុប !!: លុប useEffect សម្រាប់ attendanceRef
+
 
   // ជំហានទី 1: ដំណើរការ Firebase ទាំងពីរ
   useEffect(() => {
@@ -210,18 +210,6 @@ function App() {
         console.error('Total Passes Fetch Error (dbWrite):', error);
       });
       
-      // !! ថ្មី !!: ទាញ Overtime Limit
-      const overtimeRef = ref(dbWrite, 'passManagement/overtimeLimit');
-      const unsubscribeOvertime = onValue(overtimeRef, (snapshot) => {
-        const limit = snapshot.val();
-        // បើមិនទាន់ set ក្នុង Firebase, ប្រើ 15 ជា Default
-        setOvertimeLimit(limit || 15); 
-        console.log(`Overtime limit set to: ${limit || 15}`);
-      }, (error) => {
-        console.error('Overtime Limit Fetch Error (dbWrite):', error);
-        setOvertimeLimit(15); // ប្រើ Default បើ Error
-      });
-      
       const passwordRef = ref(dbWrite, 'passManagement/adminPassword');
       const unsubscribePassword = onValue(passwordRef, (snapshot) => {
         const pass = snapshot.val();
@@ -251,7 +239,6 @@ function App() {
         unsubscribeStudents();
         unsubscribeAttendance();
         unsubscribePasses(); 
-        unsubscribeOvertime(); // !! ថ្មី !!
         unsubscribePassword();
         unsubscribeCheckInMode();
       };
@@ -266,16 +253,20 @@ function App() {
         const activeBreak = breaks.find(r => r.checkOutTime && !r.checkInTime);
         if (!activeBreak) return null; 
         const elapsedMins = calculateDuration(activeBreak.checkOutTime, now.toISOString()); 
-        const isOvertime = elapsedMins > overtimeLimit; // !! កែសម្រួល !!: ប្រើ State
+        const isOvertime = elapsedMins > appSetup.OVERTIME_LIMIT_MINUTES; 
         return { student, record: activeBreak, elapsedMins, isOvertime };
       })
       .filter(Boolean) 
       .sort((a, b) => {
-        // !! កែសម្រួល !!: Logic Sort ថ្មី តាមសំណើ
-        // យកអ្នកដែលទើប Check Out ថ្មីៗ (checkOutTime ខ្ពស់สุด) មកដាក់ខាងលើគេ
-        return new Date(b.record.checkOutTime) - new Date(a.record.checkOutTime);
+        if (a.isOvertime !== b.isOvertime) {
+          return a.isOvertime ? -1 : 1; 
+        }
+        if (a.isOvertime) { 
+          return b.elapsedMins - a.elapsedMins;
+        }
+        return a.elapsedMins - b.elapsedMins; 
       });
-  }, [students, attendance, now, calculateDuration, overtimeLimit]); // !! កែសម្រួល !!: បន្ថែម overtimeLimit
+  }, [students, attendance, now, calculateDuration]);
 
   const allCompletedBreaks = React.useMemo(() => {
     const breaks = [];
@@ -603,39 +594,6 @@ function App() {
     );
   };
   
-  // !! ថ្មី !!: មុខងារកែ Overtime Limit
-  const handleEditOvertimeLimit = () => {
-    handleOpenPasswordModal(
-      t.passwordRequired,
-      () => {
-        setInputPrompt({
-          isOpen: true,
-          title: t.overtimeLimit,
-          message: t.overtimeLimitPrompt,
-          defaultValue: overtimeLimit,
-          type: 'number',
-          onSubmit: (newLimitString) => {
-            const newLimit = parseInt(newLimitString);
-            if (newLimitString && !isNaN(newLimit) && newLimit >= 0) {
-              const overtimeRef = ref(dbWrite, 'passManagement/overtimeLimit');
-              set(overtimeRef, newLimit)
-                .then(() => {
-                  showAlert(t.overtimeLimitSuccess, 'success');
-                })
-                .catch(err => {
-                  setAuthError(`Error setting overtime limit: ${err.message}`);
-                });
-            } else if (newLimitString) {
-              showAlert(t.invalidNumber, 'error');
-            }
-            setInputPrompt({ isOpen: false }); 
-          },
-          onCancel: () => setInputPrompt({ isOpen: false })
-        });
-      }
-    );
-  };
-  
   const handleEditPassword = () => {
     handleOpenPasswordModal(
       t.passwordRequired, 
@@ -689,6 +647,7 @@ function App() {
       return;
     }
     
+    // !! កែសម្រួល !!: ប្រើ State 'attendance' ជំនួស Ref
     const currentSortedStudentsOnBreak = students
       .map(student => {
         const breaks = attendance[student.id] || [];
@@ -722,6 +681,7 @@ function App() {
   
   // --- Search Handlers ---
   
+  // !! កែសម្រួល !!: ដក useCallback ចេញ
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
@@ -732,6 +692,7 @@ function App() {
     if (normalizedSearch === "") {
       setSearchResults([]); 
     } else {
+      // ឥឡូវនេះ វានឹងប្រើ 'attendance' និង 't' ចុងក្រោយបំផុត ពី State
       const matches = students.filter(student => 
         (student.name && student.name.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch)) ||
         (student.idNumber && String(student.idNumber).replace(/\s+/g, '').includes(normalizedSearch))
@@ -930,7 +891,6 @@ function App() {
                   totalPasses={totalPasses}
                   t={t}
                   checkInMode={checkInMode}
-                  overtimeLimit={overtimeLimit}
                 />
               )}
               {!selectedStudent && searchTerm !== "" && searchResults.length === 0 && isSearchFocused && (
@@ -989,7 +949,6 @@ function App() {
                     onDeleteClick={(e) => handleOpenPasswordModal(t.deleteConfirmMessage(student.name), () => handleConfirmDelete_Single(record.id))}
                     isSelectionMode={isSelectionMode}
                     t={t}
-                    overtimeLimit={overtimeLimit}
                   />
                 ))
               ) : (
@@ -1014,8 +973,6 @@ function App() {
               passesInUse={studentsOnBreakCount}
               totalPasses={totalPasses}
               onEditTotalPasses={handleEditTotalPasses}
-              overtimeLimit={overtimeLimit}
-              onEditOvertimeLimit={handleEditOvertimeLimit}
             />
           )}
           
@@ -1041,7 +998,6 @@ function App() {
                 totalPasses={totalPasses}
                 t={t}
                 checkInMode={checkInMode}
-                overtimeLimit={overtimeLimit}
               />
               <button onClick={() => setModalStudent(null)} className="absolute top-4 right-4 text-white bg-white/10 p-2 rounded-full transition-all hover:bg-white/30">
                 <IconClose />
@@ -1113,4 +1069,3 @@ function App() {
 const container = document.getElementById('root');
 const root = ReactDOM.createRoot(container);
 root.render(<App />);
-
