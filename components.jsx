@@ -2,6 +2,9 @@
 // 4. MAIN UI COMPONENTS
 // =================================================================
 
+// !! កែសម្រួល !!: ត្រូវតែប្រកាស React និង Hooks នៅក្នុង File នីមួយៗ
+const { useState, useEffect } = React;
+
 // ត្រូវប្រាកដថា File នេះ ត្រូវបានហៅ (load) បន្ទាប់ពី setup.jsx
 const { 
   React,
@@ -20,8 +23,6 @@ const {
   IconClose,
   IconTimer, // ថ្មី
 } = window.appSetup;
-
-const { useState, useEffect } = React;
 
 
 const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleCheckOut, handleCheckIn, handleOpenQrScanner, onDeleteClick, totalPasses, t, checkInMode, overtimeLimit }) => {
@@ -117,7 +118,7 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
         {isSpecialCase && <IconSpecial />}
       </p>
       
-      {/* ប៊ូតុង Check Out (Icon  മാത്ര) */}
+      {/* ប៊ូតុង Check Out (Icon   மாத்ర) */}
       <button
         onClick={() => handleCheckOut(student.id)}
         disabled={!canCheckOut} 
