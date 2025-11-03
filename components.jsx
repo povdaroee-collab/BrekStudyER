@@ -232,7 +232,7 @@ window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSel
         
         {isOvertime && (
           <p className="text-sm font-semibold text-red-300">
-            ({t.statusOvertime} {overtimeMins} ${t.statusMinutes})
+            ({t.statusOvertime} {overtimeMins} {t.statusMinutes})
           </p>
         )}
         {record.breakType === 'special' && (
