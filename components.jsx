@@ -1,14 +1,33 @@
+// !! ថ្មី !!: ទាញអថេរ និង Icons ពី Global Scope
+const {
+  calculateDuration,
+  OVERTIME_LIMIT_MINUTES,
+  IconCheckOut, IconCheckIn, IconSearch, IconClock, IconCheckCircle,
+  IconTicket, IconClose, IconTrash, IconNoSymbol, IconAlert,
+  IconSpecial, IconDotsVertical, IconLock, IconQrCode, IconPencil,
+  IconInfo, IconCheckCircleFill, IconPencilSquare
+} = window.appSetup;
+
 // =================================================================
 // 4. MAIN UI COMPONENTS
 // =================================================================
 
-const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleCheckOut, handleCheckIn, onDeleteClick, totalPasses }) => {
+window.StudentCard = ({ 
+  student, pageKey, passesInUse, attendance, now, 
+  handleCheckOut, 
+  handleCheckIn, // មុខងារ Check-in ស្វ័យប្រវត្តិ
+  handleOpenQrScanner, // មុខងារបើក Scanner
+  onDeleteClick, 
+  totalPasses, 
+  t, 
+  checkInMode 
+}) => {
   
   const studentBreaks = attendance[student.id] || [];
   const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
   const completedBreaks = studentBreaks.filter(r => r.checkOutTime && r.checkInTime);
       
-  let statusText = 'មិនទាន់សម្រាក';
+  let statusText = t.statusNotYet;
   let statusClass = 'bg-gray-500 text-white'; 
   let canCheckIn = false; 
   let canCheckOut = true;
@@ -20,8 +39,8 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
     const elapsedMins = calculateDuration(activeBreak.checkOutTime, now.toISOString());
     const isOvertime = elapsedMins > OVERTIME_LIMIT_MINUTES;
     
-    const passNumberDisplay = activeBreak.passNumber ? ` (${activeBreak.passNumber})` : '';
-    statusText = `កំពុងសម្រាក${passNumberDisplay} (${elapsedMins} នាទី)`; 
+    const passNumberDisplay = activeBreak.passNumber ? ` (${t.statusPass}: ${activeBreak.passNumber})` : '';
+    statusText = `${t.statusOnBreak}${passNumberDisplay} (${elapsedMins} ${t.statusMinutes})`; 
     
     statusClass = isOvertime 
       ? 'bg-red-600 text-white animate-pulse' 
@@ -39,8 +58,8 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
     const overtimeMins = isCompletedOvertime ? duration - OVERTIME_LIMIT_MINUTES : 0;
     
     statusText = isCompletedOvertime
-      ? `សម្រាករួច (លើស ${overtimeMins} នាទី)`
-      : `សម្រាករួច (${duration} នាទី)`; 
+      ? `${t.statusCompleted} (${t.statusOvertime} ${overtimeMins} ${t.statusMinutes})`
+      : `${t.statusCompleted} (${duration} ${t.statusMinutes})`; 
     statusClass = isCompletedOvertime
       ? 'bg-red-600 text-white' 
       : 'bg-green-600 text-white';
@@ -52,7 +71,7 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
     }
 
   } else {
-    statusText = 'មិនទាន់សម្រាក';
+    statusText = t.statusNotYet;
     statusClass = 'bg-gray-500 text-white';
     canCheckIn = false;
     canCheckOut = true;
@@ -60,13 +79,18 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
   
   if (passesAvailable <= 0 && canCheckOut) {
     canCheckOut = false; 
-    statusText = `កាតអស់! (${passesInUse}/${totalPasses})`;
+    statusText = `${t.statusPassOut} (${passesInUse}/${totalPasses})`;
     statusClass = 'bg-red-600 text-white';
   }
   
   const photoUrl =
     student.photoUrl ||
     `https://placehold.co/128x128/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
+
+  // !! ថ្មី !!: សម្រេចចិត្តថាតើប៊ូតុង "ចូលវិញ" ត្រូវធ្វើអ្វី
+  const checkInAction = checkInMode === 'scan' 
+    ? handleOpenQrScanner 
+    : () => handleCheckIn(student.id);
 
   return (
     <div
@@ -77,7 +101,7 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
         <button
           onClick={(e) => onDeleteClick(e, student, activeBreak)}
           className="absolute top-4 right-4 text-red-300 bg-red-900/50 p-2 rounded-full transition-all hover:bg-red-500 hover:text-white"
-          title="លុបទិន្នន័យនេះ"
+          title={t.delete}
         >
           <IconTrash />
         </button>
@@ -85,7 +109,7 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
       
       <img
         src={photoUrl}
-        alt={`រូបថតរបស់ ${student.name || 'និស្សិត'}`}
+        alt={`រូបថតរបស់ ${student.name || t.noName}`}
         className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-lg absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2"
         onError={(e) => {
           e.target.src = `https://placehold.co/128x128/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
@@ -94,13 +118,13 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
       
       <div className="pt-16 text-center">
         <p className="text-3xl font-bold text-white">
-          {student.name || 'គ្មានឈ្មោះ'}
+          {student.name || t.noName}
         </p>
         <p className="text-lg text-blue-200">
-          អត្តលេខ: {student.idNumber || 'N/A'}
+          {t.idNumber}: {student.idNumber || 'N/A'}
         </p>
         <p className="text-lg text-blue-200">
-          ថ្នាក់: {student.class || 'N/A'}
+          {t.class}: {student.class || 'N/A'}
         </p>
       </div>
       
@@ -120,34 +144,34 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
               className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-white font-bold transition-all transform hover:scale-105 shadow-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
             >
               <IconCheckOut />
-              ចេញសម្រាក
+              {t.checkOut}
             </button>
           )}
           
           {canCheckIn && (
             <button
-              onClick={() => handleCheckIn(student.id)}
+              onClick={checkInAction} // !! កែសម្រួល !!
               disabled={!canCheckIn}
               className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-blue-800 font-bold transition-all transform hover:scale-105 shadow-lg bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
             >
               <IconCheckIn />
-              ចូលវិញ
+              {t.checkIn}
             </button>
           )}
         </div>
       )}
       
-      {!canCheckOut && statusText.startsWith('កាតអស់') && (
+      {!canCheckOut && statusText.startsWith(t.statusPassOut) && (
         <div className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-white font-bold bg-red-600/50 opacity-80 cursor-not-allowed">
           <IconNoSymbol />
-          កាតចេញសម្រាកអស់
+          {t.passOutWarning}
         </div>
       )}
     </div>
   );
 };
 
-const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSelect, onDeleteClick, isSelectionMode }) => {
+window.CompletedStudentListCard = ({ student, record, onClick, isSelected, onSelect, onDeleteClick, isSelectionMode, t }) => {
   
   const formatTime = (isoString) => {
     if (!isoString) return 'N/A';
@@ -186,7 +210,7 @@ const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSele
       )}
       <img
         src={photoUrl}
-        alt={`រូបថតរបស់ ${student.name || 'និស្សិត'}`}
+        alt={`រូបថតរបស់ ${student.name || t.noName}`}
         className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md"
         onError={(e) => {
           e.target.src = `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
@@ -194,40 +218,40 @@ const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSele
       />
       <div className="flex-1 text-left">
         <p className="text-xl font-bold text-white">
-          {student.name || 'គ្មានឈ្មោះ'}
+          {student.name || t.noName}
         </p>
         <p className="text-sm text-blue-200">
-          ចេញ: {formatTime(record?.checkOutTime)} | ចូល: {formatTime(record?.checkInTime)}
+          {t.checkOut}: {formatTime(record?.checkOutTime)} | {t.checkIn}: {formatTime(record?.checkInTime)}
         </p>
         
         {record.passNumber && (
           <p className="text-sm font-semibold text-cyan-300">
-            (កាត: {record.passNumber})
+            ({t.statusPass}: {record.passNumber})
           </p>
         )}
         
         {isOvertime && (
           <p className="text-sm font-semibold text-red-300">
-            (លើស ${overtimeMins} នាទី)
+            ({t.statusOvertime} {overtimeMins} ${t.statusMinutes})
           </p>
         )}
         {record.breakType === 'special' && (
            <p className="text-sm font-semibold text-purple-300">
-            (ករណីពិសេស)
+            ({t.specialCase})
            </p>
         )}
       </div>
       
       <div className="text-center px-2">
         <p className={`text-2xl font-bold ${durationColor}`}>{duration}</p>
-        <p className="text-xs text-blue-200">នាទី</p>
+        <p className="text-xs text-blue-200">{t.statusMinutes}</p>
       </div>
       
       {!isSelectionMode && (
         <button
           onClick={(e) => onDeleteClick(e)}
           className="p-3 rounded-full text-red-300 bg-white/10 transition-colors hover:bg-red-500 hover:text-white"
-          title="លុបទិន្នន័យនេះ"
+          title={t.delete}
         >
           <IconTrash />
         </button>
@@ -236,7 +260,14 @@ const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSele
   );
 };
 
-const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCheckIn, onDeleteClick }) => {
+window.OnBreakStudentListCard = ({ 
+  student, record, elapsedMins, isOvertime, 
+  onCheckIn, 
+  handleOpenQrScanner, 
+  onDeleteClick, 
+  t, 
+  checkInMode
+}) => {
   
   const cardColor = isOvertime 
     ? 'bg-red-800/30 backdrop-blur-lg border border-red-500/30' 
@@ -247,42 +278,46 @@ const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCh
   const photoUrl =
     student.photoUrl ||
     `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
+    
+  const checkInAction = checkInMode === 'scan' 
+    ? handleOpenQrScanner 
+    : () => onCheckIn();
 
   return (
     <div className={`w-full max-w-md mx-auto rounded-2xl shadow-lg p-4 mb-3 flex items-center space-x-3 ${cardColor}`}>
       <img
         src={photoUrl}
-        alt={`រូបថតរបស់ ${student.name || 'និស្សិត'}`}
+        alt={`រូបថតរបស់ ${student.name || t.noName}`}
         className="w-16 h-16 rounded-full object-cover border-2 border-white/50 shadow-md"
         onError={(e) => { e.target.src = `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`; }}
       />
       <div className="flex-1 text-left">
         <p className="text-xl font-bold text-white">
-          {student.name || 'គ្មានឈ្មោះ'}
+          {student.name || t.noName}
         </p>
         <p className={`text-sm font-semibold ${textColor} inline-flex items-center`}>
-          {isOvertime ? "លើសម៉ោង!" : "កំពុងសម្រាក..."}
+          {isOvertime ? t.overtimeExclamation : t.statusOnBreak}
           {record.breakType === 'special' && (
             <span className="ml-2 px-2 py-0.5 text-xs text-purple-800 bg-purple-300 rounded-full">
-              ពិសេស
+              {t.specialCase}
             </span>
           )}
         </p>
         <p className="text-sm text-blue-200">
-          (កាត: {record.passNumber || '???'})
+          ({t.statusPass}: {record.passNumber || '???'})
         </p>
       </div>
       
       <div className="text-center px-2">
         <p className={`text-2xl font-bold ${textColor}`}>{elapsedMins}</p>
-        <p className="text-xs text-blue-200">នាទី</p>
+        <p className="text-xs text-blue-200">{t.statusMinutes}</p>
       </div>
       
       <div className="flex flex-col space-y-2">
         <button
-          onClick={() => onCheckIn()}
+          onClick={checkInAction} 
           className="p-3 rounded-full text-blue-800 bg-white transition-colors hover:bg-gray-200"
-          title="ចុចចូលវិញ"
+          title={t.checkIn}
         >
           <IconCheckIn />
         </button>
@@ -290,7 +325,7 @@ const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCh
         <button
           onClick={(e) => onDeleteClick(e)}
           className="p-3 rounded-full text-red-300 bg-white/10 transition-colors hover:bg-red-500 hover:text-white"
-          title="លុបទិន្នន័យនេះ"
+          title={t.delete}
         >
           <IconTrash />
         </button>
@@ -299,50 +334,7 @@ const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCh
   );
 };
 
-const PassesInfoPage = ({ passesInUse, totalPasses, onEditTotal }) => {
-    const passesAvailable = totalPasses - passesInUse;
-    
-    return (
-      <div className="w-full max-w-md mx-auto bg-white/10 backdrop-blur-lg rounded-3xl shadow-xl p-8 mt-16 text-center">
-        <div className="mb-6">
-          <IconTicket className="w-24 h-24 text-blue-200 mx-auto" />
-        </div>
-        <h2 className="text-2xl font-bold text-white mb-4">
-          ស្ថានភាពកាតចេញចូល
-        </h2>
-        
-        <div className="mb-8">
-          <p className="text-8xl font-bold text-white">{passesAvailable}</p>
-          <p className="text-2xl text-blue-200">
-            កាតនៅសល់
-          </p>
-        </div>
-        
-        <div className="flex justify-around text-white">
-          <div className="text-center">
-            <p className="text-4xl font-bold text-red-300">{passesInUse}</p>
-            <p className="text-lg text-blue-200">កំពុងប្រើ</p>
-          </div>
-          <div className="text-center">
-            <p className="text-4xl font-bold">{totalPasses}</p>
-            <p className="text-lg text-blue-200">សរុប</p>
-          </div>
-        </div>
-        
-        <div className="mt-8 border-t border-white/20 pt-6">
-          <button
-            onClick={onEditTotal}
-            className="flex items-center justify-center w-full px-4 py-3 rounded-full text-lg text-white font-bold transition-all shadow-lg bg-blue-500 hover:bg-blue-600"
-          >
-            <IconPencil />
-            កែសម្រួលចំនួនកាតសរុប
-          </button>
-        </div>
-      </div>
-    );
-};
-
-const PasswordConfirmationModal = ({ prompt, onSubmit, onCancel }) => {
+window.PasswordConfirmationModal = ({ prompt, onSubmit, onCancel, t }) => {
   if (!prompt.isOpen) return null;
   
   const [password, setPassword] = useState("");
@@ -363,7 +355,7 @@ const PasswordConfirmationModal = ({ prompt, onSubmit, onCancel }) => {
       >
         <IconLock />
         <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          ទាមទារ Password
+          {t.passwordRequired}
         </h3>
         <p className="text-gray-600 mb-4">
           {prompt.message}
@@ -374,7 +366,7 @@ const PasswordConfirmationModal = ({ prompt, onSubmit, onCancel }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg"
-            placeholder="Password..."
+            placeholder={t.passwordPrompt}
             autoFocus
           />
           {prompt.error && (
@@ -386,13 +378,13 @@ const PasswordConfirmationModal = ({ prompt, onSubmit, onCancel }) => {
               onClick={onCancel}
               className="px-6 py-3 rounded-full text-gray-700 bg-gray-200 hover:bg-gray-300 font-bold"
             >
-              បោះបង់
+              {t.cancel}
             </button>
             <button
               type="submit"
               className="px-6 py-3 rounded-full text-white bg-blue-500 hover:bg-blue-600 font-bold"
             >
-              បញ្ជាក់
+              {t.confirm}
             </button>
           </div>
         </form>
@@ -401,7 +393,7 @@ const PasswordConfirmationModal = ({ prompt, onSubmit, onCancel }) => {
   );
 };
 
-const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkLoading, bulkDeleteDate, setBulkDeleteDate, bulkDeleteMonth, setBulkDeleteMonth }) => {
+window.AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkLoading, bulkDeleteDate, setBulkDeleteDate, bulkDeleteMonth, setBulkDeleteMonth, t }) => {
   if (!isOpen) return null;
   
   return (
@@ -416,7 +408,7 @@ const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkL
         <div className="w-16 h-1.5 bg-gray-300 rounded-full mx-auto mb-4"></div>
         
         <h3 className="text-xl font-bold text-gray-900 mb-4 text-center">
-          មុខងារ Admin
+          {t.adminFunctions}
         </h3>
         
         <div className="space-y-3">
@@ -424,11 +416,11 @@ const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkL
             onClick={onSelectClick}
             className="w-full px-4 py-3 text-left text-lg font-semibold text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-lg"
           >
-            ជ្រើសរើស (Multi-Select)
+            {t.multiSelect}
           </button>
           
           <div className="p-4 bg-gray-100 rounded-lg">
-            <label className="block text-lg font-semibold text-gray-800 mb-2">លុបតាមថ្ងៃ</label>
+            <label className="block text-lg font-semibold text-gray-800 mb-2">{t.deleteByDate}</label>
             <input 
               type="date"
               value={bulkDeleteDate}
@@ -440,12 +432,12 @@ const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkL
               className="w-full mt-2 px-4 py-3 text-lg font-bold text-white bg-red-500 hover:bg-red-600 rounded-lg disabled:opacity-50"
               disabled={isBulkLoading}
             >
-              {isBulkLoading ? 'កំពុងលុប...' : 'លុបប្រចាំថ្ងៃ'}
+              {isBulkLoading ? t.deleting : t.deleteDaily}
             </button>
           </div>
           
           <div className="p-4 bg-gray-100 rounded-lg">
-            <label className="block text-lg font-semibold text-gray-800 mb-2">លុបតាមខែ</label>
+            <label className="block text-lg font-semibold text-gray-800 mb-2">{t.deleteByMonth}</label>
             <input 
               type="month"
               value={bulkDeleteMonth}
@@ -457,7 +449,7 @@ const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkL
               className="w-full mt-2 px-4 py-3 text-lg font-bold text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
               disabled={isBulkLoading}
             >
-              {isBulkLoading ? 'កំពុងលុប...' : 'លុបប្រចាំខែ'}
+              {isBulkLoading ? t.deleting : t.deleteMonthly}
             </button>
           </div>
           
@@ -467,18 +459,18 @@ const AdminActionModal = ({ isOpen, onClose, onSelectClick, onBulkClick, isBulkL
   );
 };
 
-const CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiSelect, selectionCount, isSelectionMode }) => {
+window.CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiSelect, selectionCount, isSelectionMode, t }) => {
   return (
     <div className="w-full max-w-md mx-auto mb-4 flex justify-between items-center">
       {!isSelectionMode ? (
         <>
           <h2 className="text-2xl font-bold text-white">
-            ប្រវត្តិ (ថ្ងៃនេះ)
+            {t.historyToday}
           </h2>
           <button
             onClick={onAdminClick}
             className="p-3 rounded-full text-white bg-white/10 transition-colors hover:bg-white/30"
-            title="មុខងារ Admin"
+            title={t.adminFunctions}
           >
             <IconDotsVertical />
           </button>
@@ -489,14 +481,14 @@ const CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiSe
             onClick={onCancelMultiSelect}
             className="px-4 py-2 text-white font-semibold bg-gray-600/50 rounded-full hover:bg-gray-500/50"
           >
-            បោះបង់
+            {t.cancel}
           </button>
           <button
             onClick={onMultiDeleteClick}
             disabled={selectionCount === 0}
             className="px-4 py-2 text-white font-bold bg-red-500 rounded-full hover:bg-red-600 disabled:opacity-50"
           >
-            លុប ({selectionCount})
+            {t.delete} ({selectionCount})
           </button>
         </>
       )}
@@ -504,13 +496,13 @@ const CompletedListHeader = ({ onAdminClick, onMultiDeleteClick, onCancelMultiSe
   );
 };
 
-const LoadingSpinner = () => (
+window.LoadingSpinner = () => (
   <div className="flex justify-center items-center mt-10">
     <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
   </div>
 );
 
-const DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm }) => {
+window.DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm, t }) => {
     if (!recordToDelete) return null;
     
     const { student } = recordToDelete;
@@ -526,24 +518,23 @@ const DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm }) => {
         >
           <IconAlert />
           <h3 className="text-2xl font-bold text-gray-900 mb-2">
-            លុបទិន្នន័យ?
+            {t.deleteConfirmTitle}
           </h3>
           <p className="text-gray-600 mb-6">
-            តើអ្នកប្រាកដទេថាចង់លុបទិន្នន័យសម្រាករបស់ <br/>
-            <strong className="text-gray-800">{student.name}</strong>?
+            {t.deleteConfirmMessage(student.name)}
           </p>
           <div className="flex justify-center space-x-4">
             <button
               onClick={onCancel}
               className="px-6 py-3 rounded-full text-gray-700 bg-gray-200 hover:bg-gray-300 font-bold"
             >
-              បោះបង់
+              {t.cancel}
             </button>
             <button
               onClick={onConfirm}
               className="px-6 py-3 rounded-full text-white bg-red-500 hover:bg-red-600 font-bold"
             >
-              លុប
+              {t.delete}
             </button>
           </div>
         </div>
@@ -552,48 +543,42 @@ const DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm }) => {
   };
 
 
-// !! កែសម្រួល !!: Component សម្រាប់ QR Scanner Modal (Logic Stop/Start ថ្មី)
-const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isScannerBusy }) => { 
+window.QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isScannerBusy, t }) => { 
   const [errorMessage, setErrorMessage] = useState(null);
   
   const html5QrCodeRef = React.useRef(null);
-  const scannerId = "qr-reader"; // ID ថេរ
+  const scannerId = "qr-reader"; 
 
   useEffect(() => {
     
-    // 1. បើក Modal
     if (isOpen) {
       setErrorMessage(null);
       
-      // 2. បើ Scanner មិន Busy (កំពុងរង់ចាំ Scan) -> ចាប់ផ្តើម (Start)
       if (!isScannerBusy) {
-        
-        // បង្កើត Instance ថ្មីរាល់ពេល Start 
-        const html5QrCode = new Html5Qrcode(scannerId);
-        html5QrCodeRef.current = html5QrCode;
-        
-        const qrCodeSuccessCallback = (decodedText, decodedResult) => {
-          // ពេល Scan បាន, ហៅ App.jsx តែម្ដង
-          // App.jsx នឹង set isScannerBusy=true
-          onScanSuccess(decodedText);
-        };
-        
-        const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-
-        html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
-          .catch(err => {
-            console.error("Unable to start scanner", err);
-            setErrorMessage("មិនអាចបើកកាមេរ៉ាបាន។");
-          });
+        const element = document.getElementById(scannerId);
+        if (element) {
+            const html5QrCode = new Html5Qrcode(scannerId);
+            html5QrCodeRef.current = html5QrCode;
+            
+            const qrCodeSuccessCallback = (decodedText, decodedResult) => {
+              onScanSuccess(decodedText);
+            };
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+    
+            html5QrCode.start({ facingMode: "environment" }, config, qrCodeSuccessCallback)
+              .catch(err => {
+                console.error("Unable to start scanner", err);
+                setErrorMessage(t.scanCameraError);
+              });
+        }
       }
       
-    // 3. បិទ Modal (isOpen = false) ឬ Scanner កំពុង Busy (isScannerBusy = true)
     } else {
-      // ត្រូវប្រាកដថា Scanner ត្រូវបានបិទ (Stop)
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.stop()
           .then(res => {
-            console.log("QR Scanner stopped.");
+            console.log("QR Scanner stopped (on close or busy).");
           })
           .catch(err => {
             console.warn("QR Scanner stop error (probably already stopped).", err);
@@ -602,7 +587,6 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
       }
     }
     
-    // Cleanup function (ពេលបិទ Modal)
     return () => {
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.stop()
@@ -611,7 +595,6 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
       }
     };
     
-  // 4. ឱ្យ Effect នេះ ដំណើរការរាល់ពេល isOpen ឬ isScannerBusy ផ្លាស់ប្តូរ
   }, [isOpen, isScannerBusy]); 
 
   if (!isOpen) return null;
@@ -633,17 +616,16 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
         </button>
         
         <h3 className="text-2xl font-bold text-gray-900 mb-4 text-center">
-          ស្កេនកាតចូលវិញ
+          {t.scanTitle}
         </h3>
         
-        {/* ត្រូវតែមាន ID នេះ សម្រាប់ Library ដំណើរការ */}
         <div id={scannerId} className="w-full"></div> 
         
         <div className="mt-4 text-center h-12">
           {isScannerBusy && (
              <div className="flex justify-center items-center">
                 <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <p className="text-blue-600 text-xl font-bold ml-3">កំពុងដំណើរការ...</p>
+                <p className="text-blue-600 text-xl font-bold ml-3">{t.scanProcessing}</p>
              </div>
           )}
           
@@ -653,7 +635,7 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
           
           {!isScannerBusy && lastScannedInfo && lastScannedInfo.status === 'success' && (
             <p className="text-green-600 text-xl font-bold animate-pulse">
-              ✔ ស្កេនបាន: {lastScannedInfo.name}
+              ✔ {t.scanSuccess}: {lastScannedInfo.name}
             </p>
           )}
           
@@ -669,9 +651,7 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
   );
 };
 
-// ... (InfoAlertModal, InputPromptModal) ...
-// (សូមដាក់កូដ Modals ទាំងពីរនៅទីនេះ)
-const InfoAlertModal = ({ alertInfo, onClose }) => {
+window.InfoAlertModal = ({ alertInfo, onClose, t }) => {
   if (!alertInfo.isOpen) return null;
   
   const isError = alertInfo.type === 'error';
@@ -688,7 +668,7 @@ const InfoAlertModal = ({ alertInfo, onClose }) => {
         {isError ? <IconAlert /> : <IconCheckCircleFill />}
         
         <h3 className="text-2xl font-bold text-gray-900 mb-2">
-          {isError ? "មានបញ្ហា" : "បានជោគជ័យ"}
+          {isError ? t.problem : t.success}
         </h3>
         
         <p className="text-gray-600 mb-6" style={{ whiteSpace: 'pre-line' }}>
@@ -699,14 +679,14 @@ const InfoAlertModal = ({ alertInfo, onClose }) => {
           onClick={onClose}
           className="w-full px-8 py-3 rounded-full text-white bg-blue-500 hover:bg-blue-600 font-bold"
         >
-          យល់ព្រម (OK)
+          {t.ok}
         </button>
       </div>
     </div>
   );
 };
 
-const InputPromptModal = ({ promptInfo, onSubmit, onCancel }) => {
+window.InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
   if (!promptInfo.isOpen) return null;
   
   const [value, setValue] = useState(promptInfo.defaultValue || "");
@@ -733,7 +713,7 @@ const InputPromptModal = ({ promptInfo, onSubmit, onCancel }) => {
         
         <form onSubmit={handleSubmit}>
           <input 
-            type="number"
+            type={promptInfo.type || "text"}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg"
@@ -745,13 +725,13 @@ const InputPromptModal = ({ promptInfo, onSubmit, onCancel }) => {
               onClick={onCancel}
               className="px-6 py-3 rounded-full text-gray-700 bg-gray-200 hover:bg-gray-300 font-bold"
             >
-              បោះបង់ (Cancel)
+              {t.cancel}
             </button>
             <button
               type="submit"
               className="px-6 py-3 rounded-full text-white bg-blue-500 hover:bg-blue-600 font-bold"
             >
-              យល់ព្រម (OK)
+              {t.ok}
             </button>
           </div>
         </form>
@@ -759,3 +739,4 @@ const InputPromptModal = ({ promptInfo, onSubmit, onCancel }) => {
     </div>
   );
 };
+
