@@ -24,6 +24,9 @@ function App() {
   } = window; 
   
   const { SettingsPage } = window; 
+  
+  // !! កែសម្រួល !!: ត្រូវតែប្រកាស Hooks របស់ React នៅទីនេះ
+  const { useState, useEffect } = React; 
 
   // --- States ---
   const [dbRead, setDbRead] = useState(null); 
