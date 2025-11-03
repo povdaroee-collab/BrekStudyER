@@ -2,32 +2,26 @@
 // 4. MAIN UI COMPONENTS
 // =================================================================
 
-// ត្រូវប្រាកដថា File នេះ ត្រូវបានហៅ (load) បន្ទាប់ពី setup.jsx
-// !! កែសម្រួល !!: ត្រូវទាញ React ពី window.appSetup មក *មុន*
-const { 
-  React,
+// --- ទាញ (Destructure) Dependencies ពី Global Scope ---
+const {
   calculateDuration,
   IconCheckOut,
   IconCheckIn,
   IconTrash,
   IconSpecial,
   IconNoSymbol,
-  IconQrCode, // ថ្មី
-  IconDotsVertical,
   IconAlert,
   IconLock,
-  IconCheckCircleFill,
+  IconDotsVertical,
   IconPencilSquare,
+  IconCheckCircleFill,
   IconClose,
-  IconTimer, // ថ្មី
 } = window.appSetup;
 
-// !! កែសម្រួល !!: ត្រូវប្រកាស Hooks *បន្ទាប់ពី* React ត្រូវបានកំណត់
-const { useState, useEffect } = React;
 
-
-const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleCheckOut, handleCheckIn, handleOpenQrScanner, onDeleteClick, totalPasses, t, checkInMode, overtimeLimit }) => {
+const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleCheckOut, handleCheckIn, handleOpenQrScanner, onDeleteClick, totalPasses, t, checkInMode }) => {
   
+  // --- (Logic គណនា Status) ---
   const studentBreaks = attendance[student.id] || [];
   const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
   const completedBreaks = studentBreaks.filter(r => r.checkOutTime && r.checkInTime);
@@ -42,7 +36,7 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
   
   if (activeBreak) {
     const elapsedMins = calculateDuration(activeBreak.checkOutTime, now.toISOString());
-    const isOvertime = elapsedMins > overtimeLimit; // !! កែសម្រួល !!
+    const isOvertime = elapsedMins > appSetup.OVERTIME_LIMIT_MINUTES; 
     
     const passNumberDisplay = activeBreak.passNumber ? ` (${activeBreak.passNumber})` : '';
     statusText = `${t.statusOnBreak}${passNumberDisplay} (${elapsedMins} ${t.minutes})`; 
@@ -59,8 +53,8 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
   } else if (completedBreaks.length > 0) {
     const lastBreak = completedBreaks[completedBreaks.length - 1]; 
     const duration = calculateDuration(lastBreak.checkOutTime, lastBreak.checkInTime);
-    const isCompletedOvertime = duration > overtimeLimit; // !! កែសម្រួល !!
-    const overtimeMins = isCompletedOvertime ? duration - overtimeLimit : 0;
+    const isCompletedOvertime = duration > appSetup.OVERTIME_LIMIT_MINUTES;
+    const overtimeMins = isCompletedOvertime ? duration - appSetup.OVERTIME_LIMIT_MINUTES : 0;
     
     statusText = isCompletedOvertime
       ? `${t.statusCompleted} (${t.overtime} ${overtimeMins} ${t.minutes})`
@@ -69,14 +63,13 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
       ? 'bg-red-600 text-white' 
       : 'bg-green-600 text-white';
     canCheckIn = false;
-    canCheckOut = true; 
+    canCheckOut = false; // សម្រាករួច មិនអាច Check Out ទៀតទេ
     
     if (studentBreaks.some(r => r.breakType === 'special')) {
       isSpecialCase = true;
     }
 
   } else {
-    // មិនទាន់សម្រាក
     statusText = t.statusNotYet;
     statusClass = 'bg-gray-500 text-white';
     canCheckIn = false;
@@ -88,47 +81,12 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
     statusText = `${t.statusPassOut} (${passesInUse}/${totalPasses})`;
     statusClass = 'bg-red-600 text-white';
   }
+  // --- (ចប់ Logic គណនា Status) ---
+  
   
   const photoUrl =
     student.photoUrl ||
     `https://placehold.co/128x128/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
-
-  // !! កែសម្រួល !!: Logic ប៊ូតុង Check-in
-  const renderCheckInButton = () => {
-    const action = checkInMode === 'scan' ? handleOpenQrScanner : () => handleCheckIn(student.id);
-    const icon = checkInMode === 'scan' ? <IconQrCode /> : <IconCheckIn />;
-    
-    return (
-      <button
-        onClick={action}
-        disabled={!canCheckIn}
-        className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-blue-800 font-bold transition-all transform hover:scale-105 shadow-lg bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-      >
-        {icon}
-        {t.checkIn}
-      </button>
-    );
-  };
-  
-  // !! កែសម្រួល !!: Layout ថ្មីសម្រាប់ 'មិនទាន់សម្រាក'
-  const renderNotOnBreakLayout = () => (
-    <div className="flex items-center justify-between space-x-3">
-      {/* Status */}
-      <p className={`inline-flex items-center px-5 py-4 rounded-full text-md font-semibold ${statusClass} flex-1 justify-center`}>
-        {statusText}
-        {isSpecialCase && <IconSpecial />}
-      </p>
-      
-      {/* ប៊ូតុង Check Out (Icon   மாத்ర) */}
-      <button
-        onClick={() => handleCheckOut(student.id)}
-        disabled={!canCheckOut} 
-        className="flex-shrink-0 flex items-center justify-center w-16 h-16 rounded-full text-lg text-white font-bold transition-all transform hover:scale-105 shadow-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
-      >
-        <IconCheckOut />
-      </button>
-    </div>
-  );
 
   return (
     <div
@@ -166,38 +124,68 @@ const StudentCard = ({ student, pageKey, passesInUse, attendance, now, handleChe
         </p>
       </div>
       
-      {/* !! កែសម្រួល !!: Logic សម្រាប់បង្ហាញ Layout */}
-      <div className="my-6">
-        {activeBreak ? (
-          // Layout ពេលកំពុងសម្រាក (បង្ហាញ Status និងប៊ូតុង Check-in)
-          <>
-            <div className="text-center mb-6">
-              <p className={`inline-flex items-center px-5 py-2 rounded-full text-md font-semibold ${statusClass}`}>
-                {statusText}
-                {isSpecialCase && <IconSpecial />}
-              </p>
-            </div>
-            {renderCheckInButton()}
-          </>
-        ) : (
-          // Layout ពេលមិនទាន់សម្រាក (បង្ហាញ Status + ប៊ូតុង Check-out)
-          renderNotOnBreakLayout()
-        )}
-        
-        {/* ករណីកាតអស់ */}
-        {!canCheckOut && !activeBreak && statusText.startsWith(t.statusPassOut) && (
-          <div className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-white font-bold bg-red-600/50 opacity-80 cursor-not-allowed">
-            <IconNoSymbol />
-            {t.statusPassOut}
+
+      {/* !! កែសម្រួល Layout ប៊ូតុង និង Status !! */}
+      
+      {/* ករណីទី 1: កំពុងសម្រាក (បង្ហាញ Status នៅលើ, ប៊ូតុងចូលវិញ នៅក្រោម) */}
+      {canCheckIn && (
+        <React.Fragment>
+          <div className="my-6 text-center">
+            <p className={`inline-flex items-center px-5 py-2 rounded-full text-md font-semibold ${statusClass}`}>
+              {statusText}
+              {isSpecialCase && <IconSpecial />}
+            </p>
           </div>
-        )}
-      </div>
+          <div className="flex flex-col space-y-3">
+            <button
+              onClick={checkInMode === 'scan' ? () => handleOpenQrScanner() : () => handleCheckIn(student.id)}
+              disabled={!canCheckIn}
+              className="flex items-center justify-center w-full px-4 py-4 rounded-full text-lg text-blue-800 font-bold transition-all transform hover:scale-105 shadow-lg bg-white hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+            >
+              <IconCheckIn className="w-6 h-6 mr-2" /> {/* បន្ថែម mr-2 វិញ ព្រោះមានអក្សរ */}
+              {t.checkIn}
+            </button>
+          </div>
+        </React.Fragment>
+      )}
+      
+      {/* ករណីទី 2: មិនទាន់សម្រាក (បង្ហាញ Status និង ប៊ូតុងចេញ ជួរដេកតែមួយ) */}
+      {canCheckOut && (
+        <div className="my-6 flex items-center justify-center space-x-4">
+          {/* Status Text (flex-1 ធ្វើឱ្យវាពេញ) */}
+          <p className={`flex-1 inline-flex items-center justify-center px-5 py-3 rounded-full text-md font-semibold ${statusClass}`}>
+            {statusText}
+            {isSpecialCase && <IconSpecial />}
+          </p>
+          
+          {/* Icon-only Button (flex-shrink-0 មិនឱ្យវារួមតូច) */}
+          <button
+            onClick={() => handleCheckOut(student.id)}
+            disabled={!canCheckOut} 
+            className="flex-shrink-0 flex items-center justify-center p-4 h-14 w-14 rounded-full text-lg text-white font-bold transition-all transform hover:scale-105 shadow-lg bg-red-500 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:scale-100"
+            aria-label={t.checkOut}
+          >
+            <IconCheckOut /> {/* Icon នេះគ្មាន mr-2 ទេ */}
+          </button>
+        </div>
+      )}
+      
+      {/* ករណីទី 3: សម្រាករួចរាល់ ឬ កាតអស់ (!canCheckIn && !canCheckOut) */}
+      {!canCheckIn && !canCheckOut && (
+         <div className="my-6 text-center">
+            <p className={`inline-flex items-center justify-center px-5 py-3 rounded-full text-md font-semibold ${statusClass} ${statusClass.includes('red') ? 'w-full' : ''}`}>
+              {statusClass.includes('red') && <IconNoSymbol />} 
+              {statusText}
+              {isSpecialCase && <IconSpecial />}
+            </p>
+          </div>
+      )}
 
     </div>
   );
 };
 
-const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSelect, onDeleteClick, isSelectionMode, t, overtimeLimit }) => {
+const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSelect, onDeleteClick, isSelectionMode, t }) => {
   
   const formatTime = (isoString) => {
     if (!isoString) return 'N/A';
@@ -209,8 +197,8 @@ const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSele
 
   const duration = calculateDuration(record?.checkOutTime, record?.checkInTime);
   
-  const isOvertime = duration > overtimeLimit; // !! កែសម្រួល !!
-  const overtimeMins = isOvertime ? duration - overtimeLimit : 0;
+  const isOvertime = duration > appSetup.OVERTIME_LIMIT_MINUTES;
+  const overtimeMins = isOvertime ? duration - appSetup.OVERTIME_LIMIT_MINUTES : 0;
   const cardColor = isOvertime 
     ? 'bg-red-800/30 backdrop-blur-lg border border-red-500/30' 
     : 'bg-white/10 backdrop-blur-lg'; 
@@ -258,7 +246,7 @@ const CompletedStudentListCard = ({ student, record, onClick, isSelected, onSele
         
         {isOvertime && (
           <p className="text-sm font-semibold text-red-300">
-            ({t.overtime} {overtimeMins} {t.minutes})
+            ({t.overtime} {overtimeMins} {t.minutes}) {/* <--- បានលុប $ */}
           </p>
         )}
         {record.breakType === 'special' && (
@@ -297,10 +285,6 @@ const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCh
   const photoUrl =
     student.photoUrl ||
     `https://placehold.co/64x64/EBF4FF/76A9FA?text=${student.name ? student.name.charAt(0) : 'N'}`;
-    
-  // !! កែសម្រួល !!: Logic ប៊ូតុង Check-in
-  const action = checkInMode === 'scan' ? handleOpenQrScanner : onCheckIn;
-  const icon = checkInMode === 'scan' ? <IconQrCode /> : <IconCheckIn />;
 
   return (
     <div className={`w-full max-w-md mx-auto rounded-2xl shadow-lg p-4 mb-3 flex items-center space-x-3 ${cardColor}`}>
@@ -334,11 +318,11 @@ const OnBreakStudentListCard = ({ student, record, elapsedMins, isOvertime, onCh
       
       <div className="flex flex-col space-y-2">
         <button
-          onClick={action}
+          onClick={checkInMode === 'scan' ? () => handleOpenQrScanner() : () => onCheckIn()}
           className="p-3 rounded-full text-blue-800 bg-white transition-colors hover:bg-gray-200"
           title={t.checkInTooltip}
         >
-          {icon}
+          <IconCheckIn />
         </button>
         
         <button
@@ -562,7 +546,6 @@ const DeleteConfirmationModal = ({ recordToDelete, onCancel, onConfirm, t }) => 
   };
 
 
-// Component សម្រាប់ QR Scanner Modal (Logic Stop/Start ថ្មី)
 const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isScannerBusy, t }) => { 
   const [errorMessage, setErrorMessage] = useState(null);
   
@@ -571,11 +554,9 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
 
   useEffect(() => {
     
-    // 1. បើក Modal
     if (isOpen) {
       setErrorMessage(null);
       
-      // 2. បើ Scanner មិន Busy (កំពុងរង់ចាំ Scan) -> ចាប់ផ្តើម (Start)
       if (!isScannerBusy) {
         
         const element = document.getElementById(scannerId);
@@ -597,7 +578,6 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
         }
       }
       
-    // 3. បិទ Modal (isOpen = false) ឬ Scanner កំពុង Busy (isScannerBusy = true)
     } else {
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.stop()
@@ -611,7 +591,6 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
       }
     }
     
-    // Cleanup function
     return () => {
       if (html5QrCodeRef.current) {
         html5QrCodeRef.current.stop()
@@ -665,7 +644,7 @@ const QrScannerModal = ({ isOpen, onClose, onScanSuccess, lastScannedInfo, isSca
           )}
           
           {!isScannerBusy && lastScannedInfo && lastScannedInfo.status === 'fail' && (
-            <p className="text-red-600 text-xl font-bold">
+            <p className="text-red-500 text-xl font-bold">
               ✖ {lastScannedInfo.message}
             </p>
           )}
@@ -738,7 +717,7 @@ const InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
         
         <form onSubmit={handleSubmit}>
           <input 
-            type={promptInfo.type || 'text'} // ប្រើ 'number' ឬ 'text'
+            type={promptInfo.type || 'text'}
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-lg"
@@ -765,8 +744,7 @@ const InputPromptModal = ({ promptInfo, onSubmit, onCancel, t }) => {
   );
 };
 
-
-// ភ្ជាប់ទៅ Global Scope
+// ភ្ជាប់ Components ទៅ Global Scope
 window.StudentCard = StudentCard;
 window.CompletedStudentListCard = CompletedStudentListCard;
 window.OnBreakStudentListCard = OnBreakStudentListCard;
@@ -778,4 +756,3 @@ window.DeleteConfirmationModal = DeleteConfirmationModal;
 window.QrScannerModal = QrScannerModal;
 window.InfoAlertModal = InfoAlertModal;
 window.InputPromptModal = InputPromptModal;
-
