@@ -62,10 +62,9 @@ function App() {
   const [checkInMode, setCheckInMode] = useState('scan'); 
   
   // --- Refs សម្រាប់ Stale State ---
-  // !! ថ្មី !!: ប្រើ Refs ដើម្បីរក្សាទុកទិន្នន័យចុងក្រោយបំផុត
   const t = translations[language] || translations['km'];
-  const tRef = React.useRef(t); // Ref សម្រាប់ភាសា
-  const attendanceRef = React.useRef(attendance); // Ref សម្រាប់វត្តមាន
+  const tRef = React.useRef(t); 
+  const attendanceRef = React.useRef(attendance); 
 
   // --- មុខងារ TTS ---
   const speak = React.useCallback((text) => {
@@ -94,14 +93,13 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('break_lang', language);
-    tRef.current = translations[language] || translations['km']; // !! ថ្មី !!: Update Ref
+    tRef.current = translations[language] || translations['km']; 
   }, [language, translations]);
 
   useEffect(() => {
     localStorage.setItem('break_bg', background);
   }, [background]);
 
-  // !! ថ្មី !!: Update Ref ពេល attendance ផ្លាស់ប្តូរ
   useEffect(() => {
     attendanceRef.current = attendance;
   }, [attendance]);
@@ -264,12 +262,21 @@ function App() {
       })
       .filter(Boolean) 
       .sort((a, b) => {
+        // !! កែសម្រួល !!: Logic Sort ថ្មី
+        // 1. Overtime តែងតែនៅខាងលើ
         if (a.isOvertime !== b.isOvertime) {
-          return a.isOvertime ? -1 : 1;
+          return a.isOvertime ? -1 : 1; 
         }
-        return b.elapsedMins - a.elapsedMins;
+        
+        // 2. បើទាំងពីរ Overtime, យកអ្នក Overtime យូរជាងគេមកលើ
+        if (a.isOvertime) { 
+          return b.elapsedMins - a.elapsedMins;
+        }
+        
+        // 3. បើទាំងពីរមិន Overtime, យកអ្នកទើបចេញ (នាទីតិច) មកលើ
+        return a.elapsedMins - b.elapsedMins; 
       });
-  }, [students, attendance, now, calculateDuration]);
+  }, [students, attendance, now, calculateDuration]); // !! កែសម្រួល !!
 
   const allCompletedBreaks = React.useMemo(() => {
     const breaks = [];
@@ -650,7 +657,6 @@ function App() {
       return;
     }
     
-    // !! ថ្មី !!: ប្រើ Ref ដើម្បីអានទិន្នន័យចុងក្រោយបំផុត
     const currentSortedStudentsOnBreak = students
       .map(student => {
         const breaks = attendanceRef.current[student.id] || [];
@@ -694,7 +700,6 @@ function App() {
     if (normalizedSearch === "") {
       setSearchResults([]); 
     } else {
-      // !! ថ្មី !!: ប្រើ Refs សម្រាប់ទិន្នន័យ Realtime
       const currentAttendance = attendanceRef.current;
       const currentT = tRef.current;
         
@@ -704,20 +709,20 @@ function App() {
       ).slice(0, 10); 
       
       const matchesWithStatus = matches.map(student => {
-        const studentBreaks = currentAttendance[student.id] || []; // ប្រើ Ref
+        const studentBreaks = currentAttendance[student.id] || []; 
         const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
         const completedBreaks = studentBreaks.filter(r => r.checkOutTime && r.checkInTime);
 
-        let statusText = currentT.statusNotYet; // ប្រើ Ref
+        let statusText = currentT.statusNotYet; 
         let passNumber = null;
         let statusColor = 'text-gray-500';
 
         if (activeBreak) {
-          statusText = currentT.statusOnBreak; // ប្រើ Ref
+          statusText = currentT.statusOnBreak; 
           passNumber = activeBreak.passNumber || null;
           statusColor = 'text-yellow-600';
         } else if (completedBreaks.length > 0) {
-          statusText = currentT.statusCompleted; // ប្រើ Ref
+          statusText = currentT.statusCompleted; 
           statusColor = 'text-green-600';
         }
         
@@ -726,7 +731,7 @@ function App() {
       
       setSearchResults(matchesWithStatus);
     }
-  }, [students]); // !! កែសម្រួល !!: ដក attendance និង t ចេញពី dependencies
+  }, [students]);
 
 
   const handleSelectStudentFromList = React.useCallback((student) => {
