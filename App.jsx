@@ -62,7 +62,6 @@ function App() {
   const [checkInMode, setCheckInMode] = useState('scan'); 
   
   // --- Refs សម្រាប់ Stale State ---
-  // !! កែសម្រួល !!: មិនប្រើ Refs សម្រាប់ State ទៀតទេ
   const t = translations[language] || translations['km'];
 
   // --- មុខងារ TTS ---
@@ -97,9 +96,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('break_bg', background);
   }, [background]);
-  
-  // !! លុប !!: លុប useEffect សម្រាប់ attendanceRef
-
 
   // ជំហានទី 1: ដំណើរការ Firebase ទាំងពីរ
   useEffect(() => {
@@ -258,15 +254,11 @@ function App() {
       })
       .filter(Boolean) 
       .sort((a, b) => {
-        if (a.isOvertime !== b.isOvertime) {
-          return a.isOvertime ? -1 : 1; 
-        }
-        if (a.isOvertime) { 
-          return b.elapsedMins - a.elapsedMins;
-        }
-        return a.elapsedMins - b.elapsedMins; 
+        // !! កែសម្រួល !!: Logic Sort ថ្មី តាមសំណើ
+        // យកអ្នកដែលទើប Check Out ថ្មីៗ (checkOutTime ខ្ពស់สุด) មកដាក់ខាងលើគេ
+        return new Date(b.record.checkOutTime) - new Date(a.record.checkOutTime);
       });
-  }, [students, attendance, now, calculateDuration]);
+  }, [students, attendance, now, calculateDuration]); // !! កែសម្រួល !!
 
   const allCompletedBreaks = React.useMemo(() => {
     const breaks = [];
@@ -647,7 +639,6 @@ function App() {
       return;
     }
     
-    // !! កែសម្រួល !!: ប្រើ State 'attendance' ជំនួស Ref
     const currentSortedStudentsOnBreak = students
       .map(student => {
         const breaks = attendance[student.id] || [];
@@ -681,7 +672,6 @@ function App() {
   
   // --- Search Handlers ---
   
-  // !! កែសម្រួល !!: ដក useCallback ចេញ
   const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchTerm(value);
@@ -692,7 +682,6 @@ function App() {
     if (normalizedSearch === "") {
       setSearchResults([]); 
     } else {
-      // ឥឡូវនេះ វានឹងប្រើ 'attendance' និង 't' ចុងក្រោយបំផុត ពី State
       const matches = students.filter(student => 
         (student.name && student.name.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch)) ||
         (student.idNumber && String(student.idNumber).replace(/\s+/g, '').includes(normalizedSearch))
