@@ -61,7 +61,11 @@ function App() {
   const [adminPassword, setAdminPassword] = useState(null); 
   const [checkInMode, setCheckInMode] = useState('scan'); 
   
+  // --- Refs សម្រាប់ Stale State ---
+  // !! ថ្មី !!: ប្រើ Refs ដើម្បីរក្សាទុកទិន្នន័យចុងក្រោយបំផុត
   const t = translations[language] || translations['km'];
+  const tRef = React.useRef(t); // Ref សម្រាប់ភាសា
+  const attendanceRef = React.useRef(attendance); // Ref សម្រាប់វត្តមាន
 
   // --- មុខងារ TTS ---
   const speak = React.useCallback((text) => {
@@ -78,7 +82,7 @@ function App() {
     } catch (e) {
       console.error("Speech Synthesis Error:", e);
     }
-  }, []); // មិនពឹងផ្អែកលើអ្វី cả
+  }, []);
 
   // --- Effects ---
   useEffect(() => {
@@ -90,11 +94,17 @@ function App() {
 
   useEffect(() => {
     localStorage.setItem('break_lang', language);
-  }, [language]);
+    tRef.current = translations[language] || translations['km']; // !! ថ្មី !!: Update Ref
+  }, [language, translations]);
 
   useEffect(() => {
     localStorage.setItem('break_bg', background);
   }, [background]);
+
+  // !! ថ្មី !!: Update Ref ពេល attendance ផ្លាស់ប្តូរ
+  useEffect(() => {
+    attendanceRef.current = attendance;
+  }, [attendance]);
 
 
   // ជំហានទី 1: ដំណើរការ Firebase ទាំងពីរ
@@ -140,7 +150,7 @@ function App() {
     };
     
     initFirebase();
-  }, [initializeApp, signInAnonymously, getAuth, getDatabase, firebaseConfigRead, firebaseConfigWrite]); // !! កែសម្រួល !!: បន្ថែម Dependencies
+  }, [initializeApp, signInAnonymously, getAuth, getDatabase, firebaseConfigRead, firebaseConfigWrite]);
   
   // ជំហានទី 2: ទាញទិន្នន័យ (ពី DB ផ្សេងគ្នា)
   useEffect(() => {
@@ -239,10 +249,9 @@ function App() {
         unsubscribeCheckInMode();
       };
     }
-  }, [dbRead, dbWrite, appSetup.todayString, rtdbQuery, ref, onValue, orderByChild, equalTo]); // !! កែសម្រួល !!: បន្ថែម Dependencies
+  }, [dbRead, dbWrite, appSetup.todayString, rtdbQuery, ref, onValue, orderByChild, equalTo]);
 
   // --- Data Preparation for Render ---
-  // !! កែសម្រួល !!: ប្រើ useMemo សម្រាប់ Performance
   const sortedStudentsOnBreak = React.useMemo(() => {
     return students
       .map(student => {
@@ -260,7 +269,7 @@ function App() {
         }
         return b.elapsedMins - a.elapsedMins;
       });
-  }, [students, attendance, now, calculateDuration]); // !! កែសម្រួល !!
+  }, [students, attendance, now, calculateDuration]);
 
   const allCompletedBreaks = React.useMemo(() => {
     const breaks = [];
@@ -274,11 +283,11 @@ function App() {
     });
     breaks.sort((a, b) => new Date(b.record.checkInTime) - new Date(a.record.checkInTime));
     return breaks;
-  }, [students, attendance]); // !! កែសម្រួល !!
+  }, [students, attendance]);
 
   const selectedStudent = React.useMemo(() => 
     students.find(s => s.id === selectedStudentId), 
-  [students, selectedStudentId]); // !! កែសម្រួល !!
+  [students, selectedStudentId]);
   
   const studentsOnBreakCount = sortedStudentsOnBreak.length;
   
@@ -286,7 +295,6 @@ function App() {
   // Effect សម្រាប់គ្រប់គ្រង Scanner បន្ទាប់ពី Firebase Update
   useEffect(() => {
     if (scannerTriggeredCheckIn) {
-      // គណនាចំនួនអ្នកសម្រាក *ថ្មី*
       const newStudentsOnBreak = students
         .map(student => {
           const breaks = attendance[student.id] || [];
@@ -310,13 +318,13 @@ function App() {
         setScannerTriggeredCheckIn(null); 
       }
     }
-  }, [attendance, scannerTriggeredCheckIn, students]); // !! កែសម្រួល !!: បន្ថែម Dependencies
+  }, [attendance, scannerTriggeredCheckIn, students]);
 
 
   // --- Helper function សម្រាប់ហៅ Alert ---
   const showAlert = React.useCallback((message, type = 'info') => {
     setInfoAlert({ isOpen: true, message, type });
-  }, []); // !! កែសម្រួល !!
+  }, []);
   
   // --- មុខងារសម្រាប់កត់ត្រា (ប្រើ dbWrite) ---
   
@@ -325,8 +333,8 @@ function App() {
     if (!student || !dbWrite) return;
         
     if (studentsOnBreakCount >= totalPasses) {
-      setAuthError(`${t.statusPassOut} (${studentsOnBreakCount}/${totalPasses})`);
-      speak(t.statusPassOut);
+      setAuthError(`${tRef.current.statusPassOut} (${studentsOnBreakCount}/${totalPasses})`);
+      speak(tRef.current.statusPassOut);
       return; 
     }
     
@@ -347,15 +355,15 @@ function App() {
     }
 
     const now = new Date();
-    const studentBreaks = attendance[student.id] || [];
+    const studentBreaks = attendanceRef.current[student.id] || [];
     const completedBreaks = studentBreaks.filter(r => r.checkInTime && r.checkOutTime);
     const breakCount = completedBreaks.length;
     let breakType = (breakCount >= 2) ? "special" : "normal";
     
-    speak(`${student.name || t.noName} ${t.statusOnBreak} ${t.statusPass} ${nextPassNumber}`);
+    speak(`${student.name || tRef.current.noName} ${tRef.current.statusOnBreak} ${tRef.current.statusPass} ${nextPassNumber}`);
     
-    const attendanceRef = ref(dbWrite, 'attendance');
-    const newRecordRef = push(attendanceRef);
+    const attendanceRefDb = ref(dbWrite, 'attendance');
+    const newRecordRef = push(attendanceRefDb);
     try {
       await set(newRecordRef, {
         studentId: studentId, 
@@ -374,7 +382,7 @@ function App() {
       console.error('Check-out Error (dbWrite):', error);
       setAuthError(`Check-out Error: ${error.message}`);
     }
-  }, [dbWrite, students, studentsOnBreakCount, totalPasses, sortedStudentsOnBreak, attendance, t, speak, ref, push, set, appSetup.todayString]); // !! កែសម្រួល !!
+  }, [dbWrite, students, studentsOnBreakCount, totalPasses, sortedStudentsOnBreak, speak, ref, push, set, appSetup.todayString]);
   
   const handleCheckIn = React.useCallback(async (studentId) => {
     const student = students.find(s => s.id === studentId);
@@ -383,7 +391,7 @@ function App() {
       return;
     }
     
-    const studentBreaks = attendance[student.id] || [];
+    const studentBreaks = attendanceRef.current[student.id] || [];
     const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
     
     if (!activeBreak) {
@@ -391,7 +399,7 @@ function App() {
        return;
     }
     
-    speak(`${student.name || t.noName} ${t.checkIn}`);
+    speak(`${student.name || tRef.current.noName} ${tRef.current.checkIn}`);
         
     const now = new Date();
     const docId = activeBreak.id; 
@@ -413,7 +421,7 @@ function App() {
       setIsScannerBusy(false); 
       setScannerTriggeredCheckIn(null);
     }
-  }, [dbWrite, students, attendance, t, speak, ref, update]); // !! កែសម្រួល !!
+  }, [dbWrite, students, speak, ref, update]);
   
   // --- មុខងារលុប និង Password ---
   
@@ -424,12 +432,12 @@ function App() {
       onConfirm: onConfirmCallback,
       error: null
     });
-  }, []); // !! កែសម្រួល !!
+  }, []);
   
   const handleOpenDeleteModal_Simple = React.useCallback((e, student, record) => {
     e.stopPropagation();
     setRecordToDelete({ student, record });
-  }, []); // !! កែសម្រួល !!
+  }, []);
   
   const handlePasswordSubmit = React.useCallback((password) => {
     if (!adminPassword) { 
@@ -440,9 +448,9 @@ function App() {
       passwordPrompt.onConfirm();
       setPasswordPrompt({ isOpen: false });
     } else {
-      setPasswordPrompt(prev => ({ ...prev, error: t.passwordError }));
+      setPasswordPrompt(prev => ({ ...prev, error: tRef.current.passwordError }));
     }
-  }, [adminPassword, passwordPrompt, t.passwordError]); // !! កែសម្រួល !!
+  }, [adminPassword, passwordPrompt]);
   
   const handleConfirmDelete_Single = React.useCallback(async (recordId) => {
     if (!dbWrite) return;
@@ -454,13 +462,13 @@ function App() {
       console.error('Delete Error (dbWrite):', error);
       setAuthError(`Delete Error: ${error.message}`);
     }
-  }, [dbWrite, ref, remove]); // !! កែសម្រួល !!
+  }, [dbWrite, ref, remove]);
   
   const handleToggleSelectionMode = React.useCallback(() => {
     setIsSelectionMode(prev => !prev);
     setSelectedRecords([]);
     setShowAdminModal(false);
-  }, []); // !! កែសម្រួល !!
+  }, []);
   
   const handleRecordSelect = React.useCallback((recordId) => {
     setSelectedRecords(prev => 
@@ -468,15 +476,15 @@ function App() {
         ? prev.filter(id => id !== recordId) 
         : [...prev, recordId]
     );
-  }, []); // !! កែសម្រួល !!
+  }, []);
   
   const handleOpenDeleteSelected = React.useCallback(() => {
     if (selectedRecords.length === 0) return;
     handleOpenPasswordModal(
-      t.deleteSelectedTitle(selectedRecords.length),
+      tRef.current.deleteSelectedTitle(selectedRecords.length),
       () => handleConfirmDelete_Multi()
     );
-  }, [selectedRecords.length, t, handleOpenPasswordModal]); // !! កែសម្រួល !!
+  }, [selectedRecords.length, tRef, handleOpenPasswordModal]);
 
   const handleConfirmDelete_Multi = React.useCallback(async () => {
     if (!dbWrite || selectedRecords.length === 0) return;
@@ -492,7 +500,7 @@ function App() {
       console.error('Multi-Delete Error (dbWrite):', error);
       setAuthError(`Multi-Delete Error: ${error.message}`);
     }
-  }, [dbWrite, selectedRecords, ref, update, handleToggleSelectionMode]); // !! កែសម្រួល !!
+  }, [dbWrite, selectedRecords, ref, update, handleToggleSelectionMode]);
   
   const handleOpenBulkDelete = React.useCallback((mode) => {
     setBulkDeleteMode(mode);
@@ -500,12 +508,12 @@ function App() {
     setTimeout(() => {
       handleOpenPasswordModal(
         mode === 'day' 
-          ? t.deleteByDateTitle(bulkDeleteDate)
-          : t.deleteByMonthTitle(bulkDeleteMonth),
+          ? tRef.current.deleteByDateTitle(bulkDeleteDate)
+          : tRef.current.deleteByMonthTitle(bulkDeleteMonth),
         () => handleConfirmBulkDelete(mode)
       );
     }, 100);
-  }, [bulkDeleteDate, bulkDeleteMonth, t, handleOpenPasswordModal]); // !! កែសម្រួល !!
+  }, [bulkDeleteDate, bulkDeleteMonth, tRef, handleOpenPasswordModal]);
   
   const handleConfirmBulkDelete = React.useCallback(async (mode) => {
     if (!dbWrite) return;
@@ -513,10 +521,10 @@ function App() {
     setAuthError(null);
     
     try {
-      const attendanceRef = ref(dbWrite, 'attendance');
-      const allDataSnapshot = await get(attendanceRef);
+      const attendanceRefDb = ref(dbWrite, 'attendance');
+      const allDataSnapshot = await get(attendanceRefDb);
       if (!allDataSnapshot.exists()) {
-        showAlert(t.deleteNotFound, 'error');
+        showAlert(tRef.current.deleteNotFound, 'error');
         setIsBulkLoading(false);
         return;
       }
@@ -542,9 +550,9 @@ function App() {
       
       if (count > 0) {
         await update(ref(dbWrite), updates);
-        showAlert(t.deleteSuccess(count), 'success'); 
+        showAlert(tRef.current.deleteSuccess(count), 'success'); 
       } else {
-        showAlert(t.deleteNotFound, 'error');
+        showAlert(tRef.current.deleteNotFound, 'error');
       }
     } catch (error) {
       console.error('Bulk Delete Error:', error);
@@ -553,18 +561,18 @@ function App() {
       setIsBulkLoading(false);
       setBulkDeleteMode(null);
     }
-  }, [dbWrite, bulkDeleteDate, bulkDeleteMonth, t, showAlert, ref, get, update]); // !! កែសម្រួល !!
+  }, [dbWrite, bulkDeleteDate, bulkDeleteMonth, tRef, showAlert, ref, get, update]);
   
   // --- មុខងារ Settings ថ្មី ---
   
   const handleEditTotalPasses = React.useCallback(() => {
     handleOpenPasswordModal(
-      t.passwordRequired,
+      tRef.current.passwordRequired,
       () => {
         setInputPrompt({
           isOpen: true,
-          title: t.editPassTotal,
-          message: t.editPassTotalPrompt,
+          title: tRef.current.editPassTotal,
+          message: tRef.current.editPassTotalPrompt,
           defaultValue: totalPasses,
           type: 'number',
           onSubmit: (newTotalString) => {
@@ -573,13 +581,13 @@ function App() {
               const passRef = ref(dbWrite, 'passManagement/totalPasses');
               set(passRef, newTotal)
                 .then(() => {
-                  showAlert(t.passTotalSuccess, 'success');
+                  showAlert(tRef.current.passTotalSuccess, 'success');
                 })
                 .catch(err => {
                   setAuthError(`Error setting total passes: ${err.message}`);
                 });
             } else if (newTotalString) {
-              showAlert(t.invalidNumber, 'error');
+              showAlert(tRef.current.invalidNumber, 'error');
             }
             setInputPrompt({ isOpen: false }); 
           },
@@ -587,16 +595,16 @@ function App() {
         });
       }
     );
-  }, [handleOpenPasswordModal, t, totalPasses, dbWrite, ref, set, showAlert]); // !! កែសម្រួល !!
+  }, [handleOpenPasswordModal, tRef, totalPasses, dbWrite, ref, set, showAlert]);
   
   const handleEditPassword = React.useCallback(() => {
     handleOpenPasswordModal(
-      t.passwordRequired, 
+      tRef.current.passwordRequired, 
       () => {
         setInputPrompt({
           isOpen: true,
-          title: t.changePassword,
-          message: t.changePasswordPrompt,
+          title: tRef.current.changePassword,
+          message: tRef.current.changePasswordPrompt,
           defaultValue: '',
           type: 'text',
           onSubmit: (newPassword) => {
@@ -604,7 +612,7 @@ function App() {
               const passRef = ref(dbWrite, 'passManagement/adminPassword');
               set(passRef, newPassword)
                 .then(() => {
-                  showAlert(t.changePasswordSuccess, 'success');
+                  showAlert(tRef.current.changePasswordSuccess, 'success');
                 })
                 .catch(err => {
                   setAuthError(`Error setting password: ${err.message}`);
@@ -618,50 +626,60 @@ function App() {
         });
       }
     );
-  }, [handleOpenPasswordModal, t, dbWrite, ref, set, showAlert]); // !! កែសម្រួល !!
+  }, [handleOpenPasswordModal, tRef, dbWrite, ref, set, showAlert]);
 
   const handleEditCheckInMode = React.useCallback(() => {
     handleOpenPasswordModal(
-      t.checkInMethodPrompt,
+      tRef.current.checkInMethodPrompt,
       () => {
         const newMode = checkInMode === 'scan' ? 'auto' : 'scan';
         const modeRef = ref(dbWrite, 'passManagement/checkInMode');
         set(modeRef, newMode)
           .then(() => {
-            showAlert(t.checkInModeSuccess, 'success');
+            showAlert(tRef.current.checkInModeSuccess, 'success');
           })
           .catch(err => {
             setAuthError(`Error setting check-in mode: ${err.message}`);
           });
       }
     );
-  }, [handleOpenPasswordModal, t, checkInMode, dbWrite, ref, set, showAlert]); // !! កែសម្រួល !!
+  }, [handleOpenPasswordModal, tRef, checkInMode, dbWrite, ref, set, showAlert]);
   
   const handleCheckInByPassNumber = React.useCallback((passNumber) => {
     if (!passNumber || isScannerBusy) { 
       return;
     }
     
-    const activeBreak = sortedStudentsOnBreak.find(b => b.record.passNumber === passNumber);
+    // !! ថ្មី !!: ប្រើ Ref ដើម្បីអានទិន្នន័យចុងក្រោយបំផុត
+    const currentSortedStudentsOnBreak = students
+      .map(student => {
+        const breaks = attendanceRef.current[student.id] || [];
+        const activeBreak = breaks.find(r => r.checkOutTime && !r.checkInTime);
+        if (!activeBreak) return null; 
+        return { student, record: activeBreak };
+      })
+      .filter(Boolean);
+
+    const activeBreak = currentSortedStudentsOnBreak.find(b => b.record.passNumber === passNumber);
     
     if (activeBreak) {
       setIsScannerBusy(true); 
       setScannerTriggeredCheckIn(activeBreak.student.id); 
-      setLastScannedInfo({ status: 'success', name: activeBreak.student.name || t.noName });
+      setLastScannedInfo({ status: 'success', name: activeBreak.student.name || tRef.current.noName });
       
       handleCheckIn(activeBreak.student.id);
       
     } else {
-      setLastScannedInfo({ status: 'fail', message: t.scanPassNotFound(passNumber) });
+      setLastScannedInfo({ status: 'fail', message: tRef.current.scanPassNotFound(passNumber) });
     }
-  }, [isScannerBusy, sortedStudentsOnBreak, t, handleCheckIn]); // !! កែសម្រួល !!
+  }, [isScannerBusy, students, tRef, handleCheckIn]);
   
   const handleOpenQrScanner = React.useCallback(() => {
     setLastScannedInfo(null);
     setScannerTriggeredCheckIn(null);
     setIsScannerBusy(false); 
     setShowQrScanner(true);
-  }, []); // !! កែសម្រួល !!
+  }, []);
 
   
   // --- Search Handlers ---
@@ -676,28 +694,30 @@ function App() {
     if (normalizedSearch === "") {
       setSearchResults([]); 
     } else {
+      // !! ថ្មី !!: ប្រើ Refs សម្រាប់ទិន្នន័យ Realtime
+      const currentAttendance = attendanceRef.current;
+      const currentT = tRef.current;
+        
       const matches = students.filter(student => 
         (student.name && student.name.replace(/\s+/g, '').toLowerCase().includes(normalizedSearch)) ||
         (student.idNumber && String(student.idNumber).replace(/\s+/g, '').includes(normalizedSearch))
       ).slice(0, 10); 
       
-      // !! នេះគឺជា Logic ដែលអ្នកចង់បាន !!
-      // វាប្រើ 'attendance' និង 't' ពី State ចុងក្រោយបំផុត
       const matchesWithStatus = matches.map(student => {
-        const studentBreaks = attendance[student.id] || [];
+        const studentBreaks = currentAttendance[student.id] || []; // ប្រើ Ref
         const activeBreak = studentBreaks.find(r => r.checkOutTime && !r.checkInTime);
         const completedBreaks = studentBreaks.filter(r => r.checkOutTime && r.checkInTime);
 
-        let statusText = t.statusNotYet;
+        let statusText = currentT.statusNotYet; // ប្រើ Ref
         let passNumber = null;
         let statusColor = 'text-gray-500';
 
         if (activeBreak) {
-          statusText = t.statusOnBreak;
+          statusText = currentT.statusOnBreak; // ប្រើ Ref
           passNumber = activeBreak.passNumber || null;
           statusColor = 'text-yellow-600';
         } else if (completedBreaks.length > 0) {
-          statusText = t.statusCompleted;
+          statusText = currentT.statusCompleted; // ប្រើ Ref
           statusColor = 'text-green-600';
         }
         
@@ -706,7 +726,7 @@ function App() {
       
       setSearchResults(matchesWithStatus);
     }
-  }, [students, attendance, t]); // !! កែសម្រួល !!: នេះជាចំណុចសំខាន់
+  }, [students]); // !! កែសម្រួល !!: ដក attendance និង t ចេញពី dependencies
 
 
   const handleSelectStudentFromList = React.useCallback((student) => {
@@ -714,7 +734,7 @@ function App() {
     setSelectedStudentId(student.id); 
     setSearchResults([]); 
     setIsSearchFocused(false); 
-  }, []); // !! កែសម្រួល !!
+  }, []);
 
 
   // --- Main Render ---
@@ -905,6 +925,7 @@ function App() {
               ) : (
                 <div className="mt-16 text-center">
                   <p className="text-white text-2xl font-semibold">{t.noStudentsOnBreak}</p>
+
                 </div>
               )}
             </div>
